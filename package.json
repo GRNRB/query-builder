@@ -1,0 +1,8 @@
+{
+  "name": "query-builder",
+  "private": true,
+  "scripts": {
+    "build": "pnpm --filter \"@grnrb/*\" -r run build",
+    "test": "pnpm --filter \"@grnrb/*\" -r run test"
+  }
+}
