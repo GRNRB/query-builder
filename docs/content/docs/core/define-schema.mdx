@@ -1,0 +1,54 @@
+---
+title: defineSchema
+description: Validate a schema, preserve its literal types, and catch mistakes early.
+---
+
+```ts
+function defineSchema<const TSchema extends QuerySchema>(schema: TSchema): TSchema
+```
+
+`defineSchema` is an **identity function with a `const` type parameter**. It returns the
+schema you give it unchanged at runtime, but does two important things at the type and
+dev-time level.
+
+## 1. It preserves literal types
+
+The `const` type parameter means field ids, operator ids, and arities are inferred as
+literal types (`"name"`, `"eq"`, `"one"`) rather than widened to `string`. That literal
+information is what powers operator-per-field inference and
+[`GroupOperatorId`](/docs/concepts/groups-and-operators) — see
+[TypeScript inference](/docs/guides/typescript-inference).
+
+```ts
+const schema = defineSchema({
+  fields: [{ id: "age", label: "Age", supportedOperators: ["eq", "gt", "lt"] }],
+  conditionOperators: [
+    { id: "eq", arity: "one", label: "equals" },
+    { id: "gt", arity: "one", label: "greater than" },
+    { id: "lt", arity: "one", label: "less than" },
+  ],
+});
+
+type S = typeof schema; // fully literal — use this as the schema type everywhere
+```
+
+## 2. It validates `defaultOperator` at the type level
+
+A field's `defaultOperator`, if present, is type-checked to be one of that field's
+`supportedOperators` (via the `ValidateFieldDefaults` constraint). A typo is a compile
+error, not a runtime surprise.
+
+## Development-time warnings
+
+In non-production builds, `defineSchema` `console.warn`s about common mistakes:
+
+- a **duplicate field id**,
+- a **duplicate condition operator id**, and
+- a field whose **`defaultOperator` is not in its `supportedOperators`**.
+
+These checks are stripped in production (they're guarded by `process.env.NODE_ENV`).
+
+<Callout>
+`defineSchema` does **not** deep-freeze or transform the object — it returns the same
+reference. Its value is entirely in the types and the dev warnings.
+</Callout>

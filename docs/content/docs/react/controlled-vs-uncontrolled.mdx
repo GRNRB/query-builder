@@ -1,0 +1,67 @@
+---
+title: Controlled vs uncontrolled
+description: Let the hook own the query, or own it yourself.
+---
+
+`useQueryBuilder` supports two modes, chosen by which options you pass. They expose the
+*same* return value and helpers — only **who owns the state** differs.
+
+## Uncontrolled — pass `initialQuery`
+
+The hook holds the query in its own `useReducer`. Simplest for self-contained builders.
+
+```tsx
+function Filters() {
+  const qb = useQueryBuilder(schema, {
+    initialQuery: {
+      type: "group",
+      operator: "and",
+      children: [
+        { type: "condition", field: "name", operator: "eq", value: "Alice" },
+      ],
+    },
+  });
+
+  // qb.query updates internally as you call the helpers
+  return <pre>{JSON.stringify(qb.query, null, 2)}</pre>;
+}
+```
+
+`initialQuery` is read once to seed state (it's normalized on the way in). Later changes to
+the prop don't reset the tree — that's what controlled mode is for.
+
+## Controlled — pass `query` + `onChange`
+
+You hold the query in your own state; the hook is stateless and calls `onChange` with the
+next tree after every mutation. Use this when the query must live in a parent store, be
+synced elsewhere, validated, debounced, or persisted.
+
+```tsx
+function Filters() {
+  const [query, setQuery] = useState<QueryNode<typeof schema>>(() => ({
+    id: "root",
+    type: "group",
+    operator: "and",
+    children: [],
+  }));
+
+  const qb = useQueryBuilder(schema, { query, onChange: setQuery });
+
+  // Mutations flow through onChange → setQuery → re-render with new `query`
+  return <pre>{JSON.stringify(qb.query, null, 2)}</pre>;
+}
+```
+
+<Callout title="In controlled mode, ids are yours to seed">
+Because you create the initial `query` object directly (not through `initialQuery`), give
+the root a stable `id` (e.g. `"root"`) yourself. New nodes you add through the helpers are
+still normalized for you.
+</Callout>
+
+## Choosing
+
+| Use **uncontrolled** when…                | Use **controlled** when…                          |
+| ----------------------------------------- | ------------------------------------------------- |
+| the builder is self-contained             | the query lives in a parent / global store        |
+| you just need the final `qb.query`        | you need to observe or transform every change     |
+| you want the least wiring                 | you debounce, validate, persist, or undo/redo     |

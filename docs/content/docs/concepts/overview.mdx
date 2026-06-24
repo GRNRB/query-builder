@@ -1,0 +1,63 @@
+---
+title: Overview
+description: The mental model — schema, tree, and pure transforms.
+---
+
+query-builder has three moving parts. Understanding how they relate makes the rest of the
+API obvious.
+
+## The schema describes the vocabulary
+
+The [**schema**](/docs/concepts/schema) is a static description of *what's allowed*: which
+fields exist, which operators each field supports, and how groups combine. It carries no
+state — it's the grammar your queries are written in. Because it's defined with
+[`defineSchema`](/docs/core/define-schema) and TypeScript infers its literal types, the
+schema also *drives the types* of everything else.
+
+## The query tree is data
+
+A [**query**](/docs/concepts/query-tree) is plain JSON — a tree whose root is always a
+`group`. Each child is either a `condition` (a leaf: field + operator + value) or another
+`group` (so you can nest `and` / `or` arbitrarily deep). There are no classes and no
+methods on the nodes; a query is just a serializable value you can store, send over the
+wire, and diff.
+
+```ts
+{
+  type: "group",
+  operator: "and",
+  children: [
+    { type: "condition", field: "name", operator: "eq", value: "Alice" },
+    {
+      type: "group",
+      operator: "or",
+      children: [
+        { type: "condition", field: "age", operator: "gt", value: 18 },
+      ],
+    },
+  ],
+}
+```
+
+## Helpers and the reducer are pure transforms
+
+You never mutate a tree in place. Instead you call small [tree helpers](/docs/core/tree-helpers)
+(`appendToGroup`, `moveNode`, `removeNode`, …) or dispatch actions through the
+[`reducer`](/docs/core/reducer). Each returns a **new** tree — or the *same reference* when
+nothing changed (see [Immutability](/docs/concepts/immutability)). This is what makes the
+data predictable and React-friendly.
+
+```text
+        schema  ──drives the types of──▶  query tree
+          │                                   │
+          │                                   ▼
+          └────────▶  helpers / reducer  ──▶ new query tree
+```
+
+In React, the [`useQueryBuilder`](/docs/react/use-query-builder) hook wires these together
+for you, but the model is identical.
+
+<Cards>
+  <Card title="Schema" description="Fields, operators, and group operators." href="/docs/concepts/schema" />
+  <Card title="The query tree" description="Conditions, groups, ids, and inputs." href="/docs/concepts/query-tree" />
+</Cards>

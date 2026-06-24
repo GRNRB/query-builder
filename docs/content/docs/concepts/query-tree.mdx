@@ -1,0 +1,66 @@
+---
+title: The query tree
+description: Conditions, groups, ids, and the input variants.
+---
+
+A query is a tree of **nodes**. There are exactly two kinds.
+
+## Condition nodes
+
+A `ConditionNode` is a leaf: a single filter expressed as `field` + `operator` + (usually)
+`value`. The value's shape depends on the operator's [arity](/docs/concepts/conditions-and-arity).
+
+```ts
+{ id: "c1", type: "condition", field: "name", operator: "eq", value: "Alice" }
+```
+
+## Group nodes
+
+A `GroupNode` combines other nodes with a logical `operator` (e.g. `and` / `or`). Its
+`children` are themselves conditions or groups, so trees nest arbitrarily. **The root of
+every query is a group.**
+
+```ts
+{
+  id: "g1",
+  type: "group",
+  operator: "and",
+  children: [ /* ConditionNode | GroupNode */ ],
+}
+```
+
+<Callout>
+`children` is declared `readonly` — another reminder that you transform trees by producing
+new ones rather than pushing into arrays. See [Immutability](/docs/concepts/immutability).
+</Callout>
+
+## Every node has an id
+
+Both node types carry a string `id`. Ids are how every helper targets a node — to move,
+remove, or update it, you pass its id. Within a tree, ids are expected to be unique.
+
+## Input variants — ids are optional
+
+When you *build* a tree (an `initialQuery`, or the `node` you pass to `addCondition`), you
+usually don't want to invent ids by hand. The `*Input` types make `id` optional:
+`ConditionNodeInput`, `GroupNodeInput`, and the union `QueryNodeInput`. Pass an input,
+and [`normalizeTree`](/docs/core/tree-helpers#normalizetree) (called for you by the hook)
+fills in any missing ids.
+
+```ts
+// No ids needed — normalizeTree / the hook assigns them.
+const input = {
+  type: "group",
+  operator: "and",
+  children: [
+    { type: "condition", field: "age", operator: "gt", value: 18 },
+  ],
+};
+```
+
+## Putting it together
+
+`QueryNode` is the union `ConditionNode | GroupNode`. The concrete operator and value
+types are *narrowed by your schema* — a condition on a `name` field can only use `name`'s
+operators. That inference is covered in
+[TypeScript inference](/docs/guides/typescript-inference).

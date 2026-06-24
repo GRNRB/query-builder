@@ -1,0 +1,57 @@
+---
+title: Schema
+description: Declare fields, condition operators, and group operators.
+---
+
+A `QuerySchema` has three parts. Only `fields` and `conditionOperators` are required;
+`groupOperators` is optional (but you'll almost always want it).
+
+```ts
+const schema = defineSchema({
+  fields: [
+    { id: "name", label: "Name", supportedOperators: ["eq", "contains"] },
+    { id: "age", label: "Age", supportedOperators: ["eq", "gt", "lt"] },
+  ],
+  conditionOperators: [
+    { id: "eq", arity: "one", label: "equals" },
+    { id: "contains", arity: "one", label: "contains" },
+    { id: "gt", arity: "one", label: "greater than" },
+    { id: "lt", arity: "one", label: "less than" },
+  ],
+  groupOperators: [
+    { id: "and", arity: "many", label: "AND" },
+    { id: "or", arity: "many", label: "OR" },
+  ],
+});
+```
+
+## Fields
+
+Each field declares an `id`, a human `label`, and the operator ids it `supportedOperators`.
+An optional `defaultOperator` is used when a condition switches to this field (it must be
+one of `supportedOperators`).
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="FieldDefinition" />
+
+## Operators
+
+Both condition operators and group operators are described by the same shape. The key
+field is **`arity`**, which determines the value shape of a condition using that operator —
+see [Conditions & arity](/docs/concepts/conditions-and-arity).
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="OperatorDefinition" />
+
+- **`conditionOperators`** are the leaf operators (`eq`, `contains`, `gt`, …).
+- **`groupOperators`** are the logical combinators (`and`, `or`). They typically use
+  `arity: "many"`. See [Groups & operators](/docs/concepts/groups-and-operators).
+
+## The full schema type
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="QuerySchema" />
+
+<Callout title="Always wrap with defineSchema">
+Defining the object inline and passing it straight to the hook works at runtime, but
+[`defineSchema`](/docs/core/define-schema) preserves the literal types (so operator/field
+inference works) **and** warns you in development about duplicate ids or a `defaultOperator`
+that isn't actually supported.
+</Callout>

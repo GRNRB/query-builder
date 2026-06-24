@@ -1,0 +1,56 @@
+---
+title: Drag & drop
+description: Build reordering on moveNode, including the same-group index adjustment.
+---
+
+Drag-and-drop reordering maps cleanly onto [`moveNode`](/docs/core/tree-helpers#movenode):
+when a node is dropped onto a target position, call `moveNode(draggedId, targetGroupId,
+index)`. There is **one subtlety** to get right.
+
+## The same-group, downward-move adjustment
+
+`moveNode` **removes** the dragged node first, then **inserts** it into the resulting array.
+When you drag a node *downward within the same group*, the removal shifts every later index
+down by one — so the index you computed against the *original* list is now off by one.
+
+The fix: if the drop is in the same group and the source index is **before** the drop index,
+subtract one.
+
+```ts
+// Find a node's parent group and its index within that group.
+function findParentAndIndex(node, childId) {
+  if (node.type !== "group") return null;
+  for (let i = 0; i < node.children.length; i++) {
+    if (node.children[i].id === childId) return { parentId: node.id, index: i };
+    const found = findParentAndIndex(node.children[i], childId);
+    if (found) return found;
+  }
+  return null;
+}
+
+function onDrop(qb, draggingId, groupId, dropIndex) {
+  const source = findParentAndIndex(qb.query, draggingId);
+  const insertIndex =
+    source && source.parentId === groupId && source.index < dropIndex
+      ? dropIndex - 1
+      : dropIndex;
+
+  qb.moveNode(draggingId, groupId, insertIndex);
+}
+```
+
+This is exactly the logic the [playground](/docs/getting-started/playground) and the
+[example app](/docs/examples/basic-playground) use.
+
+## You get the guards for free
+
+Because reordering goes through `moveNode`, the [safety guards](/docs/core/tree-helpers#movenode)
+apply automatically — dropping a group *into itself or one of its descendants* is rejected
+(the tree is returned unchanged), so you can't orphan a subtree by dragging a group into
+its own child.
+
+<Callout>
+The library doesn't ship a drag implementation — wire up HTML5 drag events (as the example
+does) or a library like dnd-kit, and call `moveNode` on drop. All the tree math lives in
+`moveNode`; your UI only needs to report *what* was dropped *where*.
+</Callout>

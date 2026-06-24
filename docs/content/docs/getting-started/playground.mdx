@@ -1,0 +1,31 @@
+---
+title: Playground
+description: Try the React hook live — add conditions, nest groups, and drag to reorder.
+---
+
+The widget below is a real `useQueryBuilder` instance running in your browser. Add
+conditions, change fields and operators, nest sub-groups, and **drag the handle (⠿) to
+reorder** — the JSON underneath updates live.
+
+<Playground />
+
+<Callout>
+This is the same component used in the standalone
+[`examples/basic`](https://github.com/GRNRB/query-builder/tree/main/examples/basic) app,
+trimmed for embedding. It imports `@grnrb/react-query-builder` directly from this
+repository, so it always reflects the current source.
+</Callout>
+
+## How it's built
+
+A few things to notice in the demo:
+
+- **Operators are filtered per field.** Selecting a field only offers the operators that
+  field supports — driven entirely by the schema.
+- **Value inputs follow arity.** Operators with `arity: "one"` show a text input; the
+  `is_set` operator (`arity: "none"`) shows *(no value)*. See
+  [Conditions & arity](/docs/concepts/conditions-and-arity).
+- **Dragging uses `moveNode`.** Reordering within the same group has a subtle index
+  adjustment — covered in the [drag & drop guide](/docs/guides/drag-and-drop).
+
+Read the annotated walkthrough in [Examples → Basic playground](/docs/examples/basic-playground).

@@ -1,0 +1,55 @@
+---
+title: Overview
+description: Everything exported by @grnrb/query-builder-core.
+---
+
+`@grnrb/query-builder-core` is framework-agnostic. It exports a schema helper, a set of
+immutable tree helpers, a reducer, and the types that tie them together. (The
+[React package](/docs/react/overview) re-exports all of this.)
+
+## Exports at a glance
+
+**Schema**
+
+- [`defineSchema`](/docs/core/define-schema) — validate a schema and preserve its literal types.
+- [`buildConditionPatch`](/docs/core/build-condition-patch) — resolve a condition update, resetting operator/value on an incompatible field change.
+
+**Tree helpers** — see [Tree helpers](/docs/core/tree-helpers)
+
+- `normalizeTree` — assign ids to an input tree.
+- `findNode` — depth-first lookup by id.
+- `updateNode` — apply an updater to one node.
+- `removeNode` — remove a node (never the root).
+- `appendToGroup` — append a child to a group.
+- `insertIntoGroup` — insert a child at an index.
+- `moveNode` — move a node between groups, safely.
+- `defaultGenerateId` — the default id generator (`crypto.randomUUID()`).
+
+**State**
+
+- [`reducer`](/docs/core/reducer) — `(state, action) => state`, the action-driven entry point.
+
+**Types** — see [Types](/docs/core/types)
+
+`Arity`, `OperatorDefinition`, `FieldDefinition`, `QuerySchema`, `ValueForArity`,
+`ConditionNode`, `GroupNode`, `QueryNode`, the `*Input` variants, `GroupOperatorId`,
+`ValidateFieldDefaults`, and `Action`.
+
+## Two ways to drive a tree
+
+The helpers and the reducer are two views of the same operations. Call a helper directly:
+
+```ts
+import { appendToGroup } from "@grnrb/query-builder-core";
+const next = appendToGroup(tree, groupId, node);
+```
+
+…or dispatch the equivalent action through the reducer:
+
+```ts
+import { reducer } from "@grnrb/query-builder-core";
+const next = reducer(tree, { type: "APPEND_NODE", groupId, node });
+```
+
+The reducer is convenient with `useReducer` or any store; the helpers are convenient when
+you already know the operation. They produce identical results.

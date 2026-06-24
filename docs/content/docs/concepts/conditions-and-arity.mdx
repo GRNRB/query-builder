@@ -1,0 +1,58 @@
+---
+title: Conditions & arity
+description: How an operator's arity determines a condition's value shape.
+---
+
+Every operator declares an **arity** — how many values it takes. Arity is the single
+concept that ties an operator to the shape of a condition's `value`.
+
+```ts
+type Arity = "none" | "one" | "two" | "many";
+```
+
+## Value shape by arity
+
+The `ValueForArity` type maps each arity to the expected `value`:
+
+| Arity    | Example operator      | `value` shape              |
+| -------- | --------------------- | -------------------------- |
+| `none`   | `is_set`, `is_empty`  | *(omitted / `undefined`)*  |
+| `one`    | `eq`, `contains`, `gt`| a single value `TValue`    |
+| `two`    | `between`             | a tuple `[TValue, TValue]` |
+| `many`   | `in`, `not_in`        | an array `TValue[]`        |
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="ValueForArity" />
+
+## In practice
+
+A `none`-arity operator has **no value at all**. For example, an `Active` field whose only
+operator is `is_set`:
+
+```ts
+const schema = defineSchema({
+  fields: [{ id: "active", label: "Active", supportedOperators: ["is_set"] }],
+  conditionOperators: [{ id: "is_set", arity: "none", label: "is set" }],
+});
+
+// A valid condition for it — note: no `value` key.
+const condition = { type: "condition", field: "active", operator: "is_set" };
+```
+
+A `one`-arity operator takes a single value:
+
+```ts
+{ type: "condition", field: "age", operator: "gt", value: 18 }
+```
+
+<Callout title="Arity drives the UI too">
+In the [playground](/docs/getting-started/playground), the value input is rendered from
+the operator's arity: `one` shows a text box, `none` shows *(no value)*. Reading arity off
+the operator definition is the idiomatic way to decide what input (if any) to render.
+</Callout>
+
+## Why it's typed this way
+
+Because the schema knows each operator's arity, TypeScript can enforce the right `value`
+shape per condition: a `none` operator forbids a `value`, while a `one` operator requires
+one. This is part of the inference described in
+[TypeScript inference](/docs/guides/typescript-inference).

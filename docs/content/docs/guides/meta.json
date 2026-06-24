@@ -1,0 +1,9 @@
+{
+  "title": "Guides",
+  "pages": [
+    "typescript-inference",
+    "custom-id-generation",
+    "serializing-queries",
+    "drag-and-drop"
+  ]
+}

@@ -1,9 +1,12 @@
 # @grnrb/react-query-builder
 
-React hook (`useQueryBuilder`) for building structured query/filter trees on top
-of [`@grnrb/query-builder-core`](https://www.npmjs.com/package/@grnrb/query-builder-core).
-Supports controlled and uncontrolled usage, with full TypeScript inference from
-your schema. Ships dual ESM/CJS builds.
+React hook (`useQueryBuilder`) for building structured query/filter trees on top of
+[`@grnrb/query-builder-core`](https://www.npmjs.com/package/@grnrb/query-builder-core).
+Supports controlled and uncontrolled usage, with full TypeScript inference from your schema.
+Ships dual ESM/CJS builds.
+
+📖 **[Full documentation →](https://grnrb.github.io/query-builder/)** ·
+🕹️ **[Live playground →](https://grnrb.github.io/query-builder/docs/getting-started/playground)**
 
 ## Install
 
@@ -12,8 +15,8 @@ npm install @grnrb/react-query-builder
 # or: pnpm add @grnrb/react-query-builder
 ```
 
-`react` (>=18) is a peer dependency. `@grnrb/query-builder-core` is re-exported,
-so you don't need to install it separately.
+`react` (>= 18) is a peer dependency. `@grnrb/query-builder-core` is re-exported, so you
+don't need to install it separately.
 
 ## Usage
 
@@ -38,7 +41,6 @@ const schema = defineSchema({
 });
 
 function Filters() {
-  // Uncontrolled: pass an initial query.
   const qb = useQueryBuilder(schema, {
     initialQuery: {
       type: "group",
@@ -48,27 +50,16 @@ function Filters() {
   });
 
   // qb.query is the normalized tree; mutate it via the helpers:
-  // qb.addCondition / addGroup / insertCondition / insertGroup /
-  //    removeNode / moveNode / updateCondition / updateGroupOperator
+  //   addCondition / addGroup / insertCondition / insertGroup /
+  //   removeNode / moveNode / updateCondition / updateGroupOperator
   return <pre>{JSON.stringify(qb.query, null, 2)}</pre>;
 }
 ```
 
-### Controlled mode
-
-```tsx
-const [query, setQuery] = useState(() => ({
-  id: "root",
-  type: "group" as const,
-  operator: "and" as const,
-  children: [],
-}));
-
-const qb = useQueryBuilder(schema, { query, onChange: setQuery });
-```
-
-See the [`examples/basic`](https://github.com/GRNRB/query-builder/tree/main/examples/basic)
-app for a full drag-and-drop playground.
+See [Controlled vs uncontrolled](https://grnrb.github.io/query-builder/docs/react/controlled-vs-uncontrolled)
+and the [`useQueryBuilder` reference](https://grnrb.github.io/query-builder/docs/react/use-query-builder)
+for the full API, and [`examples/basic`](https://github.com/GRNRB/query-builder/tree/main/examples/basic)
+for a full drag-and-drop playground.
 
 ## License
 

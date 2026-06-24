@@ -1,0 +1,52 @@
+---
+title: Basic playground
+description: An annotated tour of the examples/basic app — a full drag-and-drop builder.
+---
+
+The [`examples/basic`](https://github.com/GRNRB/query-builder/tree/main/examples/basic) app
+is a complete, ~600-line query builder built on the hook: nested groups, per-field
+operators, value inputs, drag-to-reorder, and a live JSON panel. The embedded
+[playground](/docs/getting-started/playground) is a trimmed version of it.
+
+<Playground />
+
+## How it's structured
+
+The example breaks the UI into a handful of small components, each mapping to a concept in
+these docs:
+
+| Piece            | What it does                                              | Related docs |
+| ---------------- | -------------------------------------------------------- | ------------ |
+| `schema`         | Declares fields, operators (incl. a `none`-arity `is_set`), and `and`/`or` groups. | [Schema](/docs/concepts/schema) |
+| `GroupBlock`     | Renders a group: its operator `select`, children, and *+ Condition / + Sub-group* buttons. | [Groups & operators](/docs/concepts/groups-and-operators) |
+| `ConditionRow`   | Renders a condition: field + operator selects and (for `arity: "one"`) a value input. | [Conditions & arity](/docs/concepts/conditions-and-arity) |
+| `DropZone`       | The thin drop target rendered between children during a drag. | [Drag & drop](/docs/guides/drag-and-drop) |
+| `useDragState`   | Tracks the dragged node and computes the corrected drop index. | [Drag & drop](/docs/guides/drag-and-drop) |
+
+## Things worth copying
+
+- **Operator list is derived from the schema.** `ConditionRow` filters
+  `schema.conditionOperators` by the selected field's `supportedOperators` — the UI can't
+  offer an invalid operator.
+- **The value input follows arity.** It reads the operator's `arity` to decide between a
+  text input and *(no value)* — see [arity](/docs/concepts/conditions-and-arity).
+- **Both modes in one app.** The example ships an uncontrolled and a controlled demo behind
+  a tab, showing the [two modes](/docs/react/controlled-vs-uncontrolled) side by side.
+- **Reordering is just `moveNode`.** All the tree manipulation is one call; the only custom
+  logic is the [same-group index adjustment](/docs/guides/drag-and-drop).
+
+## Run it locally
+
+```sh
+git clone https://github.com/GRNRB/query-builder
+cd query-builder
+pnpm install
+pnpm --filter './packages/*' run build   # build the libraries the example depends on
+pnpm --filter basic dev                   # start the Vite playground
+```
+
+<Callout>
+The embedded playground above imports `@grnrb/react-query-builder` straight from this
+repository, so it and the example always exercise the current source — a useful smoke test
+that the published API still works end to end.
+</Callout>

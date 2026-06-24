@@ -1,0 +1,72 @@
+---
+title: Groups & operators
+description: Nesting, group operators, and changing how a group combines.
+---
+
+Groups are how you express boolean logic. A group's `operator` (e.g. `and` / `or`)
+combines its `children`, and because a child can itself be a group, you can model any
+nested expression.
+
+## Group operators come from the schema
+
+The valid group operators are whatever you put in `groupOperators`. The
+`GroupOperatorId<TSchema>` helper extracts their ids as a union, so APIs that take a group
+operator (like `addGroup` or `updateGroupOperator`) only accept ids you actually declared.
+
+```ts
+const schema = defineSchema({
+  // ...
+  groupOperators: [
+    { id: "and", arity: "many", label: "AND" },
+    { id: "or", arity: "many", label: "OR" },
+  ],
+});
+
+// GroupOperatorId<typeof schema> is "and" | "or"
+```
+
+## Nesting
+
+To add a nested group, append a `group` node. With the React hook:
+
+```ts
+// Add an OR group under the root, pre-filled with one condition
+qb.addGroup(qb.query.id, "or", [
+  { type: "condition", field: "status", operator: "eq", value: "active" },
+]);
+```
+
+The resulting tree mixes conditions and groups freely:
+
+```ts
+{
+  type: "group", operator: "and",
+  children: [
+    { type: "condition", field: "name", operator: "eq", value: "Alice" },
+    {
+      type: "group", operator: "or",
+      children: [
+        { type: "condition", field: "status", operator: "eq", value: "active" },
+      ],
+    },
+  ],
+}
+```
+
+## Changing how a group combines
+
+Toggling a group between `and` and `or` is a dedicated operation:
+
+```ts
+qb.updateGroupOperator(groupId, "or");
+```
+
+The first argument is the **id of the group node** to change; the second is the new group
+operator id.
+
+<Callout type="warn" title="Action vs. helper">
+At the core level this is the `UPDATE_GROUP_OPERATOR`
+[action](/docs/core/reducer). Reach for the hook's `updateGroupOperator` (or the action)
+rather than hand-editing a group's `operator` field, so the change goes through the
+immutable [`updateNode`](/docs/core/tree-helpers#updatenode) path.
+</Callout>

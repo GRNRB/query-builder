@@ -1,0 +1,97 @@
+---
+title: Quick start
+description: Define a schema, build a query, and mutate it with the React hook.
+---
+
+This walks through the three things you'll do with every query builder: **define a
+schema**, **render a query**, and **mutate it**.
+
+## 1. Define a schema
+
+The schema declares your fields, the operators they support, and how groups combine. Wrap
+it in [`defineSchema`](/docs/core/define-schema) so TypeScript infers the literal types
+(and so you get dev-time warnings for mistakes like a duplicate field id).
+
+```ts
+import { defineSchema } from "@grnrb/react-query-builder";
+
+const schema = defineSchema({
+  fields: [
+    { id: "name", label: "Name", supportedOperators: ["eq", "contains"] },
+    { id: "age", label: "Age", supportedOperators: ["eq", "gt", "lt"] },
+  ],
+  conditionOperators: [
+    { id: "eq", arity: "one", label: "equals" },
+    { id: "contains", arity: "one", label: "contains" },
+    { id: "gt", arity: "one", label: "greater than" },
+    { id: "lt", arity: "one", label: "less than" },
+  ],
+  groupOperators: [
+    { id: "and", arity: "many", label: "AND" },
+    { id: "or", arity: "many", label: "OR" },
+  ],
+});
+```
+
+## 2. Build a query with the hook
+
+[`useQueryBuilder`](/docs/react/use-query-builder) takes the schema and an `initialQuery`
+(ids are optional — the hook fills them in). It returns the current `query` plus a set of
+mutation helpers.
+
+```tsx
+import { useQueryBuilder } from "@grnrb/react-query-builder";
+
+function Filters() {
+  const qb = useQueryBuilder(schema, {
+    initialQuery: {
+      type: "group",
+      operator: "and",
+      children: [
+        { type: "condition", field: "name", operator: "eq", value: "Alice" },
+      ],
+    },
+  });
+
+  return <pre>{JSON.stringify(qb.query, null, 2)}</pre>;
+}
+```
+
+## 3. Mutate it
+
+Call the helpers with the id of the node you're targeting. To add a child to the root
+group, use `qb.query.id` as the group id.
+
+```tsx
+// Add a condition to the root group
+qb.addCondition(qb.query.id, {
+  type: "condition",
+  field: "age",
+  operator: "gt",
+  value: 30,
+});
+
+// Add a nested OR group
+qb.addGroup(qb.query.id, "or");
+
+// Change a condition's field — the hook resets the operator/value if the new
+// field doesn't support the current operator (see buildConditionPatch)
+qb.updateCondition(someId, { field: "age" });
+```
+
+The full helper set — `addCondition`, `addGroup`, `insertCondition`, `insertGroup`,
+`removeNode`, `moveNode`, `updateCondition`, `updateGroupOperator` — is documented in
+[Mutation helpers](/docs/react/mutation-helpers).
+
+<Callout title="No React?">
+Everything here works without React too. The hook is a thin wrapper over the
+[`reducer`](/docs/core/reducer) and [tree helpers](/docs/core/tree-helpers) — drive those
+directly from any environment.
+</Callout>
+
+## See it running
+
+<Cards>
+  <Card title="Playground" description="The same hook, live and interactive." href="/docs/getting-started/playground" />
+  <Card title="Controlled vs uncontrolled" description="Own the query state yourself when you need to." href="/docs/react/controlled-vs-uncontrolled" />
+</Cards>

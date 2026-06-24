@@ -1,0 +1,73 @@
+---
+title: TypeScript inference
+description: How the schema drives types — and how to reference them.
+---
+
+The library leans hard on inference: a single `defineSchema` call gives you precise types
+everywhere, with no manual generics.
+
+## Start from `typeof schema`
+
+[`defineSchema`](/docs/core/define-schema) uses a `const` type parameter, so every literal
+is preserved. Capture the schema type with `typeof` and reuse it:
+
+```ts
+const schema = defineSchema({
+  fields: [
+    { id: "name", label: "Name", supportedOperators: ["eq", "contains"] },
+    { id: "age", label: "Age", supportedOperators: ["eq", "gt", "lt"] },
+  ],
+  conditionOperators: [
+    { id: "eq", arity: "one", label: "equals" },
+    { id: "contains", arity: "one", label: "contains" },
+    { id: "gt", arity: "one", label: "greater than" },
+    { id: "lt", arity: "one", label: "less than" },
+  ],
+  groupOperators: [
+    { id: "and", arity: "many", label: "AND" },
+    { id: "or", arity: "many", label: "OR" },
+  ],
+});
+
+type S = typeof schema;
+```
+
+`S` is the fully-literal schema. Pass it where a `TSchema` is expected (`QueryNode<S>`,
+`useQueryBuilder<S>`, etc.).
+
+## What the schema narrows
+
+- **Operators per field.** `QueryNode<S>` only allows a condition's `operator` to be one of
+  its `field`'s `supportedOperators`. A `name` condition can be `eq`/`contains`, never `gt`.
+- **Value shape per operator.** Driven by [arity](/docs/concepts/conditions-and-arity) via
+  `ValueForArity` — a `none` operator forbids `value`, a `one` operator requires one.
+- **Group operators.** `GroupOperatorId<S>` is the union of your group operator ids
+  (`"and" | "or"` above). It types `addGroup` / `updateGroupOperator`.
+
+```ts
+type GroupOps = GroupOperatorId<S>; // "and" | "or"
+```
+
+## Deriving the hook's return type
+
+A handy pattern (used in the [example app](/docs/examples/basic-playground)) is to alias
+the hook's return type so child components can be typed against it:
+
+```ts
+type QB = ReturnType<typeof useQueryBuilder<S>>;
+
+function ConditionRow({ node, qb }: { node: QB["query"] & { type: "condition" }; qb: QB }) {
+  // ...
+}
+```
+
+## defaultOperator is validated
+
+`ValidateFieldDefaults` enforces that any `defaultOperator` you set is one of that field's
+`supportedOperators` — a mismatch is a **compile error**, caught at `defineSchema`, not at
+runtime.
+
+<Callout>
+Because all of this is inference, you rarely write generics by hand. Define the schema once,
+do `type S = typeof schema`, and let the types flow.
+</Callout>

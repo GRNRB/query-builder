@@ -1,6 +1,12 @@
 packages:
   - 'packages/*'
   - 'examples/*'
+  - 'docs'
 
 allowBuilds:
   esbuild: true
+  # docs (Next.js) uses `images: { unoptimized: true }` for static export, so sharp's
+  # native build is not needed. unrs-resolver builds the native module used by the docs
+  # linter's import resolver.
+  sharp: false
+  unrs-resolver: true

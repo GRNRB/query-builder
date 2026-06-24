@@ -1,0 +1,52 @@
+---
+title: buildConditionPatch
+description: Resolve a condition update, resetting operator and value on an incompatible field change.
+---
+
+```ts
+function buildConditionPatch<TSchema>(
+  schema: TSchema,
+  current: QueryNode<TSchema>,
+  patch: Partial<ConditionNodeInput<TSchema>>,
+): Partial<ConditionNodeInput<TSchema>>
+```
+
+When a user changes a condition's **field**, the previously-selected operator may not be
+valid for the new field (e.g. switching from a text field that supports `contains` to a
+numeric field that doesn't). `buildConditionPatch` resolves that: given the current node
+and a proposed `patch`, it returns the patch to actually apply.
+
+## What it does
+
+- If the `patch` **doesn't change the field** (no `field` key, or `current` isn't a
+  condition), it returns the `patch` **unchanged**.
+- If it does change the field but the **new field still supports the current operator**, it
+  returns the `patch` **unchanged**.
+- Otherwise it **resets** the condition: the operator becomes the new field's
+  `defaultOperator` (or its first `supportedOperators` entry), and `value` is cleared to
+  `undefined`.
+
+```ts
+// current: { field: "name", operator: "contains", value: "li" }
+// "age" supports ["eq", "gt", "lt"] — not "contains"
+const patch = buildConditionPatch(schema, current, { field: "age" });
+// → { field: "age", operator: "eq", value: undefined }
+```
+
+## When to use it
+
+Call it whenever you apply a field change **outside** the React hook (the hook's
+[`updateCondition`](/docs/react/mutation-helpers#updatecondition) already runs it for you).
+The typical pattern is to resolve the patch, then dispatch an `UPDATE_NODE`
+[action](/docs/core/reducer):
+
+```ts
+const finalPatch = buildConditionPatch(schema, current, { field: "age" });
+tree = reducer(tree, { type: "UPDATE_NODE", nodeId: current.id, patch: finalPatch });
+```
+
+<Callout>
+`buildConditionPatch` is a pure function of `(schema, current, patch)` — it computes the
+patch but does not apply it. Pair it with `updateNode` / the `UPDATE_NODE` action to commit
+the change.
+</Callout>

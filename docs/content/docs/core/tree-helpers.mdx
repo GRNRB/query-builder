@@ -1,0 +1,118 @@
+---
+title: Tree helpers
+description: The immutable building blocks for reading and transforming a query tree.
+---
+
+All helpers are **pure and immutable** — they return a new tree, or the *same reference*
+when nothing changed (see [Immutability](/docs/concepts/immutability)). Import them from
+`@grnrb/query-builder-core` (or the React package).
+
+## normalizeTree
+
+```ts
+function normalizeTree(node: QueryNodeInput, generateId?: () => string): QueryNode
+```
+
+Recursively assigns an `id` to **any node missing one**, returning a fully-formed
+`QueryNode`. This is how an `initialQuery` written without ids becomes a real tree. Pass a
+custom `generateId` to control id generation; it defaults to
+[`defaultGenerateId`](#defaultgenerateid). A node that already has an `id` keeps it.
+
+```ts
+const tree = normalizeTree({
+  type: "group",
+  operator: "and",
+  children: [{ type: "condition", field: "name", operator: "eq", value: "Alice" }],
+});
+```
+
+## findNode
+
+```ts
+function findNode(root: QueryNode, id: string): QueryNode | undefined
+```
+
+Depth-first search for the node with the given `id`. Returns `undefined` if not found.
+Read-only.
+
+## updateNode
+
+```ts
+function updateNode(
+  root: QueryNode,
+  id: string,
+  updater: (node: QueryNode) => QueryNode,
+): QueryNode
+```
+
+Applies `updater` to the node matching `id`, leaving every other node untouched. If no node
+matches (or the result is element-wise identical), the original `root` reference is
+returned. This is the primitive behind `UPDATE_NODE` and `UPDATE_GROUP_OPERATOR`.
+
+## removeNode
+
+```ts
+function removeNode(root: QueryNode, id: string): QueryNode
+```
+
+Removes the node with the given `id`. **Removing the root is a no-op** — the root anchors
+the query, so the call returns `root` unchanged (with a dev-mode warning). Returns the same
+reference when the id isn't found.
+
+## appendToGroup
+
+```ts
+function appendToGroup(root: QueryNode, groupId: string, node: QueryNode): QueryNode
+```
+
+Appends `node` as the **last child** of the group matching `groupId`. If no such group
+exists, returns `root` unchanged. The `node` must already be normalized (have ids).
+
+## insertIntoGroup
+
+```ts
+function insertIntoGroup(
+  root: QueryNode,
+  groupId: string,
+  index: number,
+  node: QueryNode,
+): QueryNode
+```
+
+Inserts `node` at `index` within the matching group. The index is **clamped** to
+`[0, children.length]`, so out-of-range indices are safe.
+
+## moveNode
+
+```ts
+function moveNode(
+  root: QueryNode,
+  nodeId: string,
+  targetGroupId: string,
+  index?: number,
+): QueryNode
+```
+
+Moves the node matching `nodeId` into `targetGroupId` at `index` (appends when `index` is
+omitted). It is carefully guarded — it returns `root` **unchanged** when:
+
+- `nodeId` is not found,
+- `targetGroupId` is `nodeId` itself or one of its **descendants** (which would orphan the
+  moved subtree), or
+- `targetGroupId` doesn't exist.
+
+<Callout title="Same-group reordering gotcha">
+`moveNode` removes the node first, then inserts into the resulting array. When you move an
+item **downward within the same group**, decrement your target index by one to account for
+the removal. The [drag & drop guide](/docs/guides/drag-and-drop) shows the exact pattern.
+</Callout>
+
+## defaultGenerateId
+
+```ts
+function defaultGenerateId(): string // crypto.randomUUID()
+```
+
+The default id generator used by `normalizeTree` and the hook. Override it anywhere a
+`generateId` parameter is accepted — see
+[Custom id generation](/docs/guides/custom-id-generation).

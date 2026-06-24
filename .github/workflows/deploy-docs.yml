@@ -1,0 +1,77 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'packages/**'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+# Allow the GITHUB_TOKEN to deploy to GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; don't cancel an in-progress one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Served from https://grnrb.github.io/query-builder/. Must match the repo name (and
+      # `basePath` in docs/next.config.mjs). For a custom domain / user page, set this to ''.
+      NEXT_PUBLIC_BASE_PATH: /query-builder
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        # No `static_site_generator` input — basePath is set explicitly above so Pages
+        # doesn't try to inject its own.
+        uses: actions/configure-pages@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        # The docs site imports @grnrb/react-query-builder; build the libraries first.
+        run: pnpm --filter './packages/*' run build
+
+      - name: Build docs (static export)
+        run: pnpm --filter @grnrb/docs run build
+
+      - name: Disable Jekyll
+        # Without this, GitHub Pages' Jekyll step skips the _next/ asset directory.
+        run: touch docs/out/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
