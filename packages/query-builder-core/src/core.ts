@@ -48,7 +48,7 @@ export function removeNode<TSchema extends QuerySchema>(
 ): QueryNode<TSchema> {
   if (root.id === id) {
     if (process.env.NODE_ENV !== "production")
-      console.warn("[useQueryBuilder] Cannot remove the root node.");
+      console.warn("[removeNode] Cannot remove the root node.");
     return root;
   }
   if (root.type !== "group") return root;
@@ -154,7 +154,9 @@ export function buildConditionPatch<TSchema extends QuerySchema>(
 
 /**
  * Moves the node matching `nodeId` to `targetGroupId` at `index` (appends if omitted).
- * Returns the root unchanged when `nodeId` is not found.
+ * Returns the root unchanged when `nodeId` is not found, when `targetGroupId` does not
+ * exist, or when `targetGroupId` is `nodeId` itself or one of its descendants (which would
+ * orphan the moved subtree).
  */
 export function moveNode<TSchema extends QuerySchema>(
   root: QueryNode<TSchema>,
@@ -165,7 +167,16 @@ export function moveNode<TSchema extends QuerySchema>(
   const nodeToMove = findNode(root, nodeId);
   if (!nodeToMove) return root;
 
+  // Reject moving a node into itself or one of its own descendants: removing the node
+  // first would take the target out of the tree, dropping the moved subtree entirely.
+  if (findNode(nodeToMove, targetGroupId) !== undefined) return root;
+
   const withoutNode = removeNode(root, nodeId);
+
+  // Guard against a stale/unknown target. Without this, the node has already been removed
+  // and the failed insert would silently drop it from the tree.
+  if (findNode(withoutNode, targetGroupId) === undefined) return root;
+
   return insertIntoGroup(
     withoutNode,
     targetGroupId,
@@ -227,10 +238,9 @@ export function reducer<TSchema extends QuerySchema>(
       return removeNode(state, action.nodeId);
 
     case "UPDATE_NODE":
-      return updateNode(state, action.nodeId, (node) => ({
-        ...node,
-        ...action.patch,
-      }));
+      return updateNode(state, action.nodeId, (node) =>
+        node.type === "condition" ? { ...node, ...action.patch } : node,
+      );
 
     case "UPDATE_GROUP_OPERATOR":
       return updateNode(state, action.groupId, (node) =>

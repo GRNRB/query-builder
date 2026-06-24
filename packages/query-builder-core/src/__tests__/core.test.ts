@@ -8,6 +8,7 @@ import {
   insertIntoGroup,
   moveNode,
   defineSchema,
+  reducer,
 } from "../index";
 
 const schema = defineSchema({
@@ -292,5 +293,77 @@ describe("moveNode (tree utility)", () => {
     const tree = normalizeTree<S>({ ...baseInput, id: "root" });
     const result = moveNode(tree, "ghost", "root");
     expect(result).toBe(tree);
+  });
+
+  it("is a no-op for an unknown targetGroupId (no data loss)", () => {
+    const tree = normalizeTree<S>({ ...baseInput, id: "root" });
+    if (tree.type !== "group") throw new Error("expected group");
+    const movedId = tree.children[0].id;
+    const result = moveNode(tree, movedId, "ghost-group");
+    // the node must NOT be removed when the target does not exist
+    expect(result).toBe(tree);
+    expect(findNode(result, movedId)).toBeDefined();
+  });
+
+  it("is a no-op when moving a group into its own descendant (no data loss)", () => {
+    const tree = normalizeTree<S>({
+      id: "root",
+      type: "group",
+      operator: "and",
+      children: [
+        {
+          id: "outer",
+          type: "group",
+          operator: "and",
+          children: [
+            {
+              id: "inner",
+              type: "group",
+              operator: "or",
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+    const result = moveNode(tree, "outer", "inner");
+    expect(result).toBe(tree);
+    expect(findNode(result, "outer")).toBeDefined();
+    expect(findNode(result, "inner")).toBeDefined();
+  });
+
+  it("is a no-op when moving a node into itself", () => {
+    const tree = normalizeTree<S>({ ...baseInput, id: "root" });
+    const result = moveNode(tree, "root", "root");
+    expect(result).toBe(tree);
+  });
+});
+
+describe("reducer", () => {
+  it("UPDATE_NODE patches a matching condition node", () => {
+    const tree = normalizeTree<S>({ ...baseInput, id: "root" });
+    if (tree.type !== "group") throw new Error("expected group");
+    const condId = tree.children[0].id;
+    const result = reducer(tree, {
+      type: "UPDATE_NODE",
+      nodeId: condId,
+      patch: { value: "Bob" },
+    });
+    const updated = findNode(result, condId);
+    expect(updated).toMatchObject({ field: "name", value: "Bob" });
+  });
+
+  it("UPDATE_NODE leaves a group node untouched", () => {
+    const tree = normalizeTree<S>({ ...baseInput, id: "root" });
+    // Targeting a group with a condition patch must not corrupt the group.
+    const result = reducer(tree, {
+      type: "UPDATE_NODE",
+      nodeId: "root",
+      patch: { field: "age", operator: "eq", value: 1 },
+    });
+    expect(result).toBe(tree);
+    const root = findNode(result, "root");
+    expect(root).toMatchObject({ type: "group", operator: "and" });
+    expect(root).not.toHaveProperty("field");
   });
 });

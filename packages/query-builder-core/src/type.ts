@@ -227,5 +227,13 @@ export type Action<TSchema extends QuerySchema> =
     }
   | { type: "MOVE_NODE"; nodeId: string; targetGroupId: string; index?: number }
   | { type: "REMOVE_NODE"; nodeId: string }
-  | { type: "UPDATE_NODE"; nodeId: string; patch: Partial<ConditionNodeInput<TSchema>> }
-  | { type: "UPDATE_GROUP_OPERATOR"; groupId: string; operator: string };
+  | {
+      type: "UPDATE_NODE";
+      nodeId: string;
+      patch: Partial<ConditionNodeInput<TSchema>>;
+    }
+  | {
+      type: "UPDATE_GROUP_OPERATOR";
+      groupId: GroupOperatorId<TSchema>;
+      operator: string;
+    };
