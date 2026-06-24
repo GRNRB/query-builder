@@ -1,22 +1,36 @@
 {
   "name": "@grnrb/query-builder-core",
   "version": "0.1.0",
+  "description": "Framework-agnostic core for building structured query/filter trees: types, tree helpers, schema definition, and reducer.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GRNRB/query-builder.git",
+    "directory": "packages/query-builder-core"
+  },
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

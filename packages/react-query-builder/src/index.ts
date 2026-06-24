@@ -25,6 +25,10 @@ export type {
   ConditionNodeInput,
   GroupNodeInput,
   GroupOperatorId,
+  ValidateFieldDefaults,
+  Action,
+} from "@grnrb/query-builder-core";
+export type {
   UseQueryBuilderOptions,
   UseQueryBuilderReturn,
   AddCondition,
@@ -35,6 +39,4 @@ export type {
   MoveNode,
   UpdateCondition,
   UpdateGroupOperator,
-  ValidateFieldDefaults,
-  Action,
-} from "@grnrb/query-builder-core";
+} from "./types";

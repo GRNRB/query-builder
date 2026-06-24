@@ -1,17 +1,7 @@
 import { useCallback, useReducer } from "react";
 import type {
-  AddCondition,
-  AddGroup,
-  InsertCondition,
-  InsertGroup,
-  MoveNode,
   QueryNode,
   QuerySchema,
-  RemoveNode,
-  UpdateCondition,
-  UpdateGroupOperator,
-  UseQueryBuilderOptions,
-  UseQueryBuilderReturn,
   Action,
 } from "@grnrb/query-builder-core";
 import {
@@ -21,6 +11,18 @@ import {
   normalizeTree,
   reducer,
 } from "@grnrb/query-builder-core";
+import type {
+  AddCondition,
+  AddGroup,
+  InsertCondition,
+  InsertGroup,
+  MoveNode,
+  RemoveNode,
+  UpdateCondition,
+  UpdateGroupOperator,
+  UseQueryBuilderOptions,
+  UseQueryBuilderReturn,
+} from "./types";
 
 export function useQueryBuilder<const TSchema extends QuerySchema>(
   schema: TSchema,

@@ -7,10 +7,9 @@ export {
   findNode,
   insertIntoGroup,
   moveNode,
-  buildConditionPatch,
-  defineSchema,
-  reducer,
-} from "./core";
+} from "./tree";
+export { buildConditionPatch, defineSchema } from "./schema";
+export { reducer } from "./reducer";
 export type {
   Arity,
   OperatorDefinition,
@@ -24,16 +23,6 @@ export type {
   ConditionNodeInput,
   GroupNodeInput,
   GroupOperatorId,
-  UseQueryBuilderOptions,
-  UseQueryBuilderReturn,
-  AddCondition,
-  AddGroup,
-  InsertCondition,
-  InsertGroup,
-  RemoveNode,
-  MoveNode,
-  UpdateCondition,
-  UpdateGroupOperator,
   ValidateFieldDefaults,
   Action,
 } from "./type";
