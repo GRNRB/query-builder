@@ -58,7 +58,7 @@ function Filters() {
 
 See [Controlled vs uncontrolled](https://grnrb.github.io/query-builder/docs/react/controlled-vs-uncontrolled)
 and the [`useQueryBuilder` reference](https://grnrb.github.io/query-builder/docs/react/use-query-builder)
-for the full API, and [`examples/basic`](https://github.com/GRNRB/query-builder/tree/main/examples/basic)
+for the full API, and [`examples/react/basic`](https://github.com/GRNRB/query-builder/tree/main/examples/react/basic)
 for a full drag-and-drop playground.
 
 ## License

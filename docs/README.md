@@ -33,7 +33,7 @@ on every push to `main` that touches `docs/**` or `packages/**`. Requires the re
 
 - **`content/docs/*.mdx`** — the documentation pages and `meta.json` navigation.
 - **`src/components/playground.tsx`** — the live demo (a trimmed port of
-  `examples/basic/src/App.tsx`); embedded in MDX as `<Playground />`.
+  `examples/react/basic/src/App.tsx`); embedded in MDX as `<Playground />`.
 - **`src/components/type-table.tsx`** — wires `fumadocs-typescript`; `<AutoTypeTable />`
   generates API tables straight from the library's TypeScript source.
 - Static **search** (`src/app/api/search/route.ts` + `src/components/search.tsx`) and

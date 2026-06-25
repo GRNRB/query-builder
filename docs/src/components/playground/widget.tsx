@@ -8,7 +8,7 @@
 // so this file owns everything visual (schema, styles, drag, rows/groups, JSON panel) once.
 //
 // Adapters: src/components/playground.tsx (hook) and src/components/vanilla-playground.tsx
-// (reducer). The standalone, fuller version of this widget lives at examples/basic/src/App.tsx.
+// (reducer). The standalone, fuller version of this widget lives at examples/react/basic/src/App.tsx.
 
 import { useState, useSyncExternalStore } from 'react';
 import { defineSchema } from '@grnrb/query-builder-core';

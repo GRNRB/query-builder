@@ -4,7 +4,7 @@
 //
 // The hook already exposes exactly the `PlaygroundController` surface, so this file is just
 // wiring: `useQueryBuilder` → controller → `<PlaygroundWidget>`. All UI lives in
-// ./playground/widget.tsx. The fuller standalone version is examples/basic/src/App.tsx.
+// ./playground/widget.tsx. The fuller standalone version is examples/react/basic/src/App.tsx.
 
 import { useQueryBuilder } from '@grnrb/react-query-builder';
 import {
