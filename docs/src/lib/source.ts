@@ -6,7 +6,6 @@ import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
 export const source = loader({
   baseUrl: docsRoute,
   source: docs.toFumadocsSource(),
-  plugins: [],
 });
 
 export function getPageImage(page: (typeof source)['$inferPage']) {

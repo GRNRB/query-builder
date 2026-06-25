@@ -1,0 +1,5 @@
+{
+  "title": "Vanilla JS",
+  "root": true,
+  "pages": ["index", "concepts", "reference", "playground"]
+}

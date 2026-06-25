@@ -1,0 +1,115 @@
+---
+title: Reference
+description: Exports, function signatures, the action set, and the type catalog.
+---
+
+Everything here is exported from `@grnrb/query-builder-core` — no framework, no
+dependencies. For how to *use* these to change a tree, see the
+[Vanilla JS guide](/docs/framework/vanilla-js). (Using React? The same exports are
+re-exported from `@grnrb/react-query-builder`, which adds the
+[`useQueryBuilder`](/docs/framework/react/reference#the-hook) hook.)
+
+## Functions
+
+### defineSchema
+
+```ts
+function defineSchema<const TSchema extends QuerySchema>(schema: TSchema): TSchema
+```
+
+An identity function with a `const` type parameter: it returns the schema unchanged but
+**preserves its literal types** (powering operator-per-field inference) and, in
+non-production builds, **warns** about a duplicate field id, a duplicate condition operator
+id, or a `defaultOperator` not in `supportedOperators`. See
+[Concepts](/docs/framework/vanilla-js/concepts).
+
+### normalizeTree
+
+```ts
+function normalizeTree(node: QueryNodeInput, generateId?: () => string): QueryNode
+```
+
+Recursively assigns an `id` to any node missing one. Pass a custom `generateId` to control
+id generation (defaults to `defaultGenerateId`, i.e. `crypto.randomUUID()`). See
+[Custom id generation](/docs/framework/vanilla-js#custom-id-generation).
+
+### reducer
+
+```ts
+function reducer<TSchema>(state: QueryNode<TSchema>, action: Action<TSchema>): QueryNode<TSchema>
+```
+
+Takes the current tree and an action, returns the next tree — **two arguments, no schema
+parameter**. Each action maps to a tree helper, so it inherits the same immutability and
+guards (an action that changes nothing returns the same reference). The `Action` union:
+
+| `type`                  | Fields                                       |
+| ----------------------- | -------------------------------------------- |
+| `APPEND_NODE`           | `groupId`, `node`                            |
+| `INSERT_NODE`           | `groupId`, `index`, `node`                   |
+| `MOVE_NODE`             | `nodeId`, `targetGroupId`, `index?`          |
+| `REMOVE_NODE`           | `nodeId`                                     |
+| `UPDATE_NODE`           | `nodeId`, `patch` (condition only)           |
+| `UPDATE_GROUP_OPERATOR` | `groupId`, `operator`                        |
+
+### buildConditionPatch
+
+```ts
+function buildConditionPatch<TSchema>(
+  schema: TSchema,
+  current: QueryNode<TSchema>,
+  patch: Partial<ConditionNodeInput<TSchema>>,
+): Partial<ConditionNodeInput<TSchema>>
+```
+
+Resolves a condition update: if the `patch` changes the `field` to one that doesn't support
+the current operator, it resets the operator to the new field's `defaultOperator` (or first
+supported) and clears `value`; otherwise it returns the patch unchanged. Run it before an
+`UPDATE_NODE` action when the field may change.
+
+### Tree helpers
+
+Immutable building blocks — each returns a new tree, or the *same reference* when nothing
+changed. Every reducer action has an equivalent helper.
+
+| Function | Signature |
+| -------- | --------- |
+| `findNode` | `(root, id) => QueryNode \| undefined` — depth-first lookup |
+| `updateNode` | `(root, id, updater) => QueryNode` — apply `updater` to one node |
+| `removeNode` | `(root, id) => QueryNode` — remove a node (never the root) |
+| `appendToGroup` | `(root, groupId, node) => QueryNode` — append as last child |
+| `insertIntoGroup` | `(root, groupId, index, node) => QueryNode` — insert (index clamped) |
+| `moveNode` | `(root, nodeId, targetGroupId, index?) => QueryNode` — move, with guards |
+| `defaultGenerateId` | `() => string` — `crypto.randomUUID()` |
+
+## Types
+
+Generated from the library source, so they always match the published types.
+
+### OperatorDefinition
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="OperatorDefinition" />
+
+### FieldDefinition
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="FieldDefinition" />
+
+### QuerySchema
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="QuerySchema" />
+
+### GroupNode
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="GroupNode" />
+
+### Type aliases
+
+| Type                             | Meaning |
+| -------------------------------- | ------- |
+| `Arity`                          | `"none" \| "one" \| "two" \| "many"`. |
+| `ValueForArity<TArity, TValue>`  | Maps an arity to its [value shape](/docs/framework/vanilla-js/concepts#operators-and-arity). |
+| `ConditionNode` / `GroupNode`    | The two node kinds; `QueryNode` is their union. |
+| `GroupOperatorId<TSchema>`       | Union of the schema's group operator ids. |
+| `ConditionNodeInput` / `GroupNodeInput` / `QueryNodeInput` | Input variants with `id` optional. |
+| `ValidateFieldDefaults<TFields>` | Constraint ensuring each `defaultOperator` is supported. |
+| `Action<TSchema>`                | The reducer action union (table above). |

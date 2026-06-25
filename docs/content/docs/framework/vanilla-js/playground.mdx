@@ -1,0 +1,51 @@
+---
+title: Playground
+description: Drive a query tree with the core reducer — no hook, no framework helpers.
+---
+
+The widget below holds the tree in a single piece of state and changes it **only** through
+`@grnrb/query-builder-core` — `reducer`, `normalizeTree`, and `buildConditionPatch`. There is
+no `useQueryBuilder`; the React here is just the rendering shell. Add conditions, change
+fields and operators, nest sub-groups, and **drag the handle (⠿) to reorder** — the JSON
+underneath updates live.
+
+<VanillaPlayground />
+
+<Callout title="What's framework-specific here?">
+Only the rendering. Every state change is `tree = reducer(tree, action)` — the same call you
+would make in Node, a worker, or a test. Swap the `<select>`/`<button>` layer for your own
+DOM and the logic is unchanged. Prefer the React ergonomics? The
+[React playground](/docs/framework/react/playground) wraps these same operations in the hook.
+</Callout>
+
+## How it's built
+
+Every mutation is a reducer dispatch over a single `useState` tree:
+
+| Action in the UI            | Core call |
+| --------------------------- | --------- |
+| *+ Condition / + Sub-group* | `reducer(tree, { type: "APPEND_NODE", groupId, node: normalizeTree(...) })` |
+| Change a field / operator   | `buildConditionPatch(schema, current, patch)` → `reducer(tree, { type: "UPDATE_NODE", ... })` |
+| Change a value              | `reducer(tree, { type: "UPDATE_NODE", nodeId, patch: { value } })` |
+| Toggle a group's AND/OR     | `reducer(tree, { type: "UPDATE_GROUP_OPERATOR", groupId, operator })` |
+| Remove                      | `reducer(tree, { type: "REMOVE_NODE", nodeId })` |
+| Drag to reorder             | `reducer(tree, { type: "MOVE_NODE", nodeId, targetGroupId, index })` |
+
+- **New nodes are normalized first** — `APPEND_NODE` / `INSERT_NODE` / `MOVE_NODE` expect ids,
+  so every freshly built node is wrapped in `normalizeTree`.
+- **Field changes go through `buildConditionPatch`** — if the new field doesn't support the
+  current operator, the operator resets and the value clears (the React hook does this for
+  you; here it's explicit).
+- **Reordering is just `MOVE_NODE`** — with the one same-group index subtlety: `moveNode`
+  removes before it inserts, so dragging **downward within the same group** subtracts one from
+  the drop index.
+
+## Run it locally
+
+```sh
+git clone https://github.com/GRNRB/query-builder
+cd query-builder
+pnpm install
+pnpm --filter './packages/*' run build   # build the libraries the example depends on
+pnpm --filter basic dev                   # start the Vite playground
+```

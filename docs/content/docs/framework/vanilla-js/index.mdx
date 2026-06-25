@@ -1,0 +1,240 @@
+---
+title: Getting Started
+description: Build and mutate query trees with the reducer and tree helpers — no framework.
+---
+
+`@grnrb/query-builder-core` has **no dependencies and no framework**. You own the tree and
+change it with the [`reducer`](/docs/framework/vanilla-js/reference#reducer) (or the tree
+helpers directly) — use it from Node, a server, tests, or any UI framework.
+
+## Install
+
+```sh
+npm install @grnrb/query-builder-core
+# or: pnpm add @grnrb/query-builder-core
+```
+
+## Define a schema
+
+The schema declares your fields, their operators, and how groups combine — see
+[Concepts](/docs/framework/vanilla-js/concepts) for the full detail. Wrap it in
+`defineSchema` so TypeScript infers the literal types.
+
+```ts
+import { defineSchema } from "@grnrb/query-builder-core";
+
+const schema = defineSchema({
+  fields: [
+    { id: "name", label: "Name", supportedOperators: ["eq", "contains"] },
+    { id: "age", label: "Age", supportedOperators: ["eq", "gt", "lt"] },
+  ],
+  conditionOperators: [
+    { id: "eq", arity: "one", label: "equals" },
+    { id: "contains", arity: "one", label: "contains" },
+    { id: "gt", arity: "one", label: "greater than" },
+    { id: "lt", arity: "one", label: "less than" },
+  ],
+  groupOperators: [
+    { id: "and", arity: "many", label: "AND" },
+    { id: "or", arity: "many", label: "OR" },
+  ],
+});
+```
+
+## Build a query
+
+A query is plain data. [`normalizeTree`](/docs/framework/vanilla-js/reference#normalizetree)
+turns an id-less input into a real [query tree](/docs/framework/vanilla-js/concepts#the-query-tree)
+by assigning ids.
+
+```ts
+import { normalizeTree } from "@grnrb/query-builder-core";
+
+let query = normalizeTree({
+  type: "group",
+  operator: "and",
+  children: [
+    { type: "condition", field: "name", operator: "eq", value: "Alice" },
+  ],
+});
+
+console.log(JSON.stringify(query, null, 2));
+```
+
+## Mutate the tree
+
+Drive changes with the [`reducer`](/docs/framework/vanilla-js/reference#reducer) —
+`reducer(state, action)` returns the next tree. New nodes must be **normalized first**.
+
+```ts
+import { normalizeTree, reducer } from "@grnrb/query-builder-core";
+
+// Add
+query = reducer(query, {
+  type: "APPEND_NODE",
+  groupId: query.id,
+  node: normalizeTree({
+    type: "condition",
+    field: "age",
+    operator: "gt",
+    value: 30,
+  }),
+});
+
+// Insert at an index
+query = reducer(query, {
+  type: "INSERT_NODE",
+  groupId: query.id,
+  index: 0,
+  node: normalizeTree({ type: "group", operator: "or", children: [] }),
+});
+
+// Remove & move
+query = reducer(query, { type: "REMOVE_NODE", nodeId }); // root is a no-op
+query = reducer(query, { type: "MOVE_NODE", nodeId, targetGroupId, index }); // index optional
+
+// Update group operator
+query = reducer(query, {
+  type: "UPDATE_GROUP_OPERATOR",
+  groupId,
+  operator: "or",
+});
+```
+
+The full action set:
+
+| `type`                  | Fields                              |
+| ----------------------- | ----------------------------------- |
+| `APPEND_NODE`           | `groupId`, `node`                   |
+| `INSERT_NODE`           | `groupId`, `index`, `node`          |
+| `MOVE_NODE`             | `nodeId`, `targetGroupId`, `index?` |
+| `REMOVE_NODE`           | `nodeId`                            |
+| `UPDATE_NODE`           | `nodeId`, `patch` (condition only)  |
+| `UPDATE_GROUP_OPERATOR` | `groupId`, `operator`               |
+
+Prefer plain functions? Every action has an equivalent
+[tree helper](/docs/framework/vanilla-js/reference#tree-helpers) (`appendToGroup`,
+`insertIntoGroup`, `removeNode`, `moveNode`, …) that takes the same arguments and returns the
+next tree.
+
+### Updating a condition
+
+`UPDATE_NODE` is a _raw_ merge into the condition. To reset the operator/value when the
+**field** changes to one that doesn't support the current operator, run
+[`buildConditionPatch`](/docs/framework/vanilla-js/reference#buildconditionpatch) first:
+
+```ts
+import {
+  buildConditionPatch,
+  findNode,
+  reducer,
+} from "@grnrb/query-builder-core";
+
+const current = findNode(query, nodeId)!;
+const patch = buildConditionPatch(schema, current, { field: "age" });
+query = reducer(query, { type: "UPDATE_NODE", nodeId, patch });
+```
+
+<Callout title="Normalize new nodes">
+  `APPEND_NODE` / `INSERT_NODE` / `MOVE_NODE` expect nodes that already have ids
+  — wrap new nodes in `normalizeTree`. Every operation is immutable and
+  [guarded](/docs/framework/vanilla-js/reference#tree-helpers) (e.g. `moveNode`
+  won't orphan a subtree).
+</Callout>
+
+## Custom id generation
+
+Every node needs a unique `id`. By default the library uses `defaultGenerateId`
+(`crypto.randomUUID()`). Pass a generator to `normalizeTree` to override it:
+
+```ts
+let n = 0;
+const tree = normalizeTree(input, () => `n${++n}`);
+```
+
+Override it for **deterministic tests** (predictable snapshots), to avoid **SSR/hydration**
+mismatches (`crypto.randomUUID()` is non-deterministic — use a deterministic generator or
+normalize once and pass the result down), or for **shorter/prefixed** ids.
+
+<Callout type="warn">
+  Whatever generator you use must return **unique** strings within a tree — ids
+  are how every operation finds a node.
+</Callout>
+
+## TypeScript inference
+
+[`defineSchema`](/docs/framework/vanilla-js/reference#defineschema) uses a `const` type
+parameter, so every literal is preserved. Capture the schema type with `typeof` and reuse it:
+
+```ts
+const schema = defineSchema({
+  /* ... */
+});
+type S = typeof schema;
+```
+
+From `S`, the types flow automatically:
+
+- **Operators per field** — `QueryNode<S>` only allows a condition's `operator` to be one of
+  its `field`'s `supportedOperators`.
+- **Value shape per operator** — driven by [arity](/docs/framework/vanilla-js/concepts#operators-and-arity)
+  (`none` forbids `value`, `one` requires one).
+- **Group operators** — `GroupOperatorId<S>` is the union of your group operator ids.
+
+`ValidateFieldDefaults` makes a `defaultOperator` that isn't in `supportedOperators` a
+**compile error**, caught at `defineSchema`.
+
+## Serializing queries
+
+A query tree is plain, serializable data — `JSON.stringify` it directly.
+
+```ts
+localStorage.setItem("filters", JSON.stringify(query)); // or send to your API
+```
+
+A persisted tree **already has ids**, so parse and use it as-is. For a **template authored
+without ids**, normalize it on load — `normalizeTree` only fills _missing_ ids, so it's safe
+either way:
+
+```ts
+import { normalizeTree } from "@grnrb/query-builder-core";
+
+const tree = normalizeTree(templateWithoutIds);
+```
+
+Translating a tree into a backend filter (SQL, Mongo, Elasticsearch…) is a recursive walk —
+handle the two `type`s and read each operator's arity to interpret `value`:
+
+```ts
+function toPredicate(node: QueryNode<typeof schema>): unknown {
+  if (node.type === "group")
+    return { [node.operator]: node.children.map(toPredicate) };
+  return { field: node.field, op: node.operator, value: (node as any).value };
+}
+```
+
+<Callout>
+  Keep your **schema** as the source of truth on both ends, and validate an
+  incoming tree against it before trusting persisted queries that may predate a
+  schema change.
+</Callout>
+
+## See also
+
+<Cards>
+  <Card
+    title="Concepts"
+    description="Schema, the query tree, and immutability."
+    href="/docs/framework/vanilla-js/concepts"
+  />
+  <Card
+    title="Reference"
+    description="Functions, the action set, and types."
+    href="/docs/framework/vanilla-js/reference"
+  />
+  <Card
+    title="Playground"
+    description="The reducer, live and interactive."
+    href="/docs/framework/vanilla-js/playground"
+  />
+</Cards>
