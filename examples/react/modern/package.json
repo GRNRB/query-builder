@@ -1,10 +1,16 @@
 {
   "name": "modern",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "exports": {
-    "./app": { "types": "./app.d.ts", "default": "./src/App.tsx" },
-    "./theme": { "types": "./theme.d.ts", "default": "./src/theme/index.ts" }
+    "./app": {
+      "types": "./app.d.ts",
+      "default": "./src/App.tsx"
+    },
+    "./theme": {
+      "types": "./theme.d.ts",
+      "default": "./src/theme/index.ts"
+    }
   },
   "scripts": {
     "dev": "vite",
