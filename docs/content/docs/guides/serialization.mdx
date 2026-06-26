@@ -1,0 +1,42 @@
+---
+title: Serializing & loading queries
+description: Persist a query tree as JSON, reload it, and translate it into a backend filter.
+---
+
+A query tree is plain, serializable data — `JSON.stringify` it directly.
+
+```ts
+localStorage.setItem("filters", JSON.stringify(qb.query)); // or send to your API
+```
+
+## Loading a saved query
+
+A persisted tree **already has ids**, so parse and use it as-is (as `initialQuery`, or as the
+controlled `query`). For a **template authored without ids**, normalize it on load —
+[`normalizeTree`](/docs/core/query-tree#normalizetree) only fills *missing* ids, so it's safe
+either way:
+
+```ts
+import { normalizeTree } from "@grnrb/query-builder-core";
+
+const tree = normalizeTree(templateWithoutIds);
+```
+
+## Translating to a backend filter
+
+Turning a tree into a SQL / Mongo / Elasticsearch predicate is a recursive walk — handle the
+two `type`s and read each operator's [arity](/docs/core/schema#operators-and-arity) to
+interpret `value`:
+
+```ts
+function toPredicate(node: QueryNode<typeof schema>): unknown {
+  if (node.type === "group")
+    return { [node.operator]: node.children.map(toPredicate) };
+  return { field: node.field, op: node.operator, value: (node as any).value };
+}
+```
+
+<Callout>
+  Keep your **schema** as the source of truth on both ends, and validate an incoming tree
+  against it before trusting persisted queries that may predate a schema change.
+</Callout>

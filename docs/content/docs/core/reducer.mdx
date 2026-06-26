@@ -1,0 +1,99 @@
+---
+title: Reducer & actions
+description: The reducer, the action set, and buildConditionPatch.
+---
+
+The `reducer` is the primary way to change a tree: `reducer(state, action)` returns the next
+tree. Each action maps to an equivalent [tree helper](/docs/core/tree-helpers), so it inherits
+the same immutability and guards. The React hook's helpers dispatch these actions for you; in
+plain JS you call the reducer directly.
+
+```ts
+import { normalizeTree, reducer } from "@grnrb/query-builder-core";
+
+// Add — new nodes must be normalized first (they need ids).
+query = reducer(query, {
+  type: "APPEND_NODE",
+  groupId: query.id,
+  node: normalizeTree({ type: "condition", field: "age", operator: "gt", value: 30 }),
+});
+
+// Insert at an index
+query = reducer(query, {
+  type: "INSERT_NODE",
+  groupId: query.id,
+  index: 0,
+  node: normalizeTree({ type: "group", operator: "or", children: [] }),
+});
+
+// Remove & move
+query = reducer(query, { type: "REMOVE_NODE", nodeId }); // root is a no-op
+query = reducer(query, { type: "MOVE_NODE", nodeId, targetGroupId, index }); // index optional
+
+// Update a group's operator
+query = reducer(query, { type: "UPDATE_GROUP_OPERATOR", groupId, operator: "or" });
+```
+
+<Callout title="Normalize new nodes">
+`APPEND_NODE` / `INSERT_NODE` / `MOVE_NODE` expect nodes that already have ids — wrap new
+nodes in [`normalizeTree`](/docs/core/query-tree#normalizetree). Every operation is immutable
+and [guarded](/docs/core/tree-helpers) (e.g. `MOVE_NODE` won't orphan a subtree).
+</Callout>
+
+## reducer
+
+```ts
+function reducer<TSchema>(state: QueryNode<TSchema>, action: Action<TSchema>): QueryNode<TSchema>
+```
+
+Takes the current tree and an action, returns the next tree — **two arguments, no schema
+parameter**. Each action maps to a tree helper, so it inherits the same immutability and guards
+(an action that changes nothing returns the same reference).
+
+## The action set
+
+```ts
+type Action<TSchema> = /* the union below */;
+```
+
+| `type`                  | Fields                              |
+| ----------------------- | ----------------------------------- |
+| `APPEND_NODE`           | `groupId`, `node`                   |
+| `INSERT_NODE`           | `groupId`, `index`, `node`          |
+| `MOVE_NODE`             | `nodeId`, `targetGroupId`, `index?` |
+| `REMOVE_NODE`           | `nodeId`                            |
+| `UPDATE_NODE`           | `nodeId`, `patch` (condition only)  |
+| `UPDATE_GROUP_OPERATOR` | `groupId`, `operator`               |
+
+Prefer plain functions? Every action has an equivalent [tree
+helper](/docs/core/tree-helpers) (`appendToGroup`, `insertIntoGroup`, `removeNode`, `moveNode`,
+…) that takes the same arguments and returns the next tree.
+
+## Updating a condition
+
+`UPDATE_NODE` is a *raw* merge into the condition. To reset the operator/value when the
+**field** changes to one that doesn't support the current operator, run `buildConditionPatch`
+first:
+
+```ts
+import { buildConditionPatch, findNode, reducer } from "@grnrb/query-builder-core";
+
+const current = findNode(query, nodeId)!;
+const patch = buildConditionPatch(schema, current, { field: "age" });
+query = reducer(query, { type: "UPDATE_NODE", nodeId, patch });
+```
+
+### buildConditionPatch
+
+```ts
+function buildConditionPatch<TSchema>(
+  schema: TSchema,
+  current: QueryNode<TSchema>,
+  patch: Partial<ConditionNodeInput<TSchema>>,
+): Partial<ConditionNodeInput<TSchema>>
+```
+
+Resolves a condition update: if the `patch` changes the `field` to one that doesn't support
+the current operator, it resets the operator to the new field's `defaultOperator` (or first
+supported) and clears `value`; otherwise it returns the patch unchanged. The React hook's
+`updateCondition` helper runs this automatically.

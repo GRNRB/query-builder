@@ -14,12 +14,21 @@ importers:
 
   docs:
     dependencies:
+      '@emotion/react':
+        specifier: ^11.14.0
+        version: 11.14.0(@types/react@19.2.17)(react@19.2.7)
+      '@emotion/styled':
+        specifier: ^11.14.1
+        version: 11.14.1(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(@types/react@19.2.17)(react@19.2.7)
       '@grnrb/query-builder-core':
         specifier: workspace:*
         version: link:../packages/query-builder-core
       '@grnrb/react-query-builder':
         specifier: workspace:*
         version: link:../packages/react-query-builder
+      '@mui/material':
+        specifier: ^9.0.1
+        version: 9.1.2(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(@types/react@19.2.17)(react@19.2.7))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@orama/orama':
         specifier: ^3.1.18
         version: 3.1.18
@@ -41,6 +50,9 @@ importers:
       lucide-react:
         specifier: ^1.20.0
         version: 1.21.0(react@19.2.7)
+      modern:
+        specifier: workspace:*
+        version: link:../examples/react/modern
       next:
         specifier: 16.2.9
         version: 16.2.9(@babel/core@7.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

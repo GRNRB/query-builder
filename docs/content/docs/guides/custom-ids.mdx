@@ -1,0 +1,38 @@
+---
+title: Custom id generation
+description: Override how node ids are generated — for tests, SSR, or shorter ids.
+---
+
+Every node needs a unique `id`. By default the library uses `defaultGenerateId`
+(`crypto.randomUUID()`). Override it by passing a `generateId` function.
+
+**With the React hook** — pass it in the options:
+
+```ts
+let counter = 0;
+const qb = useQueryBuilder(schema, {
+  initialQuery,
+  generateId: () => `node-${++counter}`,
+});
+```
+
+**With the core directly** — pass it to
+[`normalizeTree`](/docs/core/query-tree#normalizetree):
+
+```ts
+let n = 0;
+const tree = normalizeTree(input, () => `n${++n}`);
+```
+
+## When to override
+
+- **Deterministic tests** — predictable snapshots instead of random UUIDs.
+- **SSR / hydration** — `crypto.randomUUID()` is non-deterministic, so server and client can
+  disagree. Use a deterministic generator, or normalize once on the server and pass the result
+  down.
+- **Shorter / prefixed ids** — when UUIDs are more than you need.
+
+<Callout type="warn">
+  Whatever generator you use must return **unique** strings within a tree — ids are how every
+  operation finds a node.
+</Callout>

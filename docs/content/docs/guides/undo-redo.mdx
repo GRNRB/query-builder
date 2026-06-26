@@ -1,0 +1,76 @@
+---
+title: Undo / redo
+description: Keep a history of whole-tree snapshots on top of controlled mode.
+---
+
+Because every mutation returns a *new* immutable tree (and an unchanged operation returns the
+**same reference**), history is almost free: run the hook in [controlled
+mode](/docs/guides/controlled-mode) and snapshot the previous tree on each `onChange`.
+
+The pattern is three stacks — `past`, `present`, `future`. Every change pushes the prior
+`present` onto `past` and clears `future`; undo and redo shuttle whole-tree snapshots between
+the stacks.
+
+```ts
+import { useCallback, useState } from "react";
+import {
+  defaultGenerateId,
+  normalizeTree,
+  useQueryBuilder,
+} from "@grnrb/react-query-builder";
+import type { QueryNode, QueryNodeInput } from "@grnrb/react-query-builder";
+
+interface History {
+  past: QueryNode<typeof schema>[];
+  present: QueryNode<typeof schema>;
+  future: QueryNode<typeof schema>[];
+}
+
+export function useUndoableQuery(initial: QueryNodeInput<typeof schema>) {
+  const [history, setHistory] = useState<History>(() => ({
+    past: [],
+    present: normalizeTree(initial, defaultGenerateId),
+    future: [],
+  }));
+
+  const onChange = useCallback((next: QueryNode<typeof schema>) => {
+    setHistory((h) =>
+      // Identical reference → nothing changed → don't record a history entry.
+      next === h.present
+        ? h
+        : { past: [...h.past, h.present], present: next, future: [] },
+    );
+  }, []);
+
+  const undo = useCallback(() => {
+    setHistory((h) => {
+      if (h.past.length === 0) return h;
+      const present = h.past[h.past.length - 1];
+      return { past: h.past.slice(0, -1), present, future: [h.present, ...h.future] };
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setHistory((h) => {
+      if (h.future.length === 0) return h;
+      const [present, ...future] = h.future;
+      return { past: [...h.past, h.present], present, future };
+    });
+  }, []);
+
+  const qb = useQueryBuilder(schema, { query: history.present, onChange });
+
+  return { qb, undo, redo, canUndo: history.past.length > 0, canRedo: history.future.length > 0 };
+}
+```
+
+The `next === h.present` check leans on [referential
+equality](/docs/core/query-tree#immutability): a no-op mutation (say, removing the root)
+returns the same tree, so it never pollutes the history with a duplicate entry.
+
+<Callout title="See it running">
+  The
+  [`examples/react/modern`](https://github.com/GRNRB/query-builder/tree/main/examples/react/modern)
+  app ships this exact hook (`src/hooks/useUndoableQuery.ts`) wired to keyboard shortcuts
+  (⌘Z / ⇧⌘Z).
+</Callout>

@@ -2,13 +2,13 @@
 
 // Shared, presentation-only playground widget.
 //
-// Both docs demos render this exact UI; they differ only in *how a mutation is applied* —
-// the React demo drives it through the `useQueryBuilder` hook, the Vanilla demo through the
-// core `reducer`. That difference is captured by the `PlaygroundController` interface below,
-// so this file owns everything visual (schema, styles, drag, rows/groups, JSON panel) once.
+// Docs demos render this exact UI; *how a mutation is applied* is captured by the
+// `PlaygroundController` interface below — the React demo drives it through the
+// `useQueryBuilder` hook — so this file owns everything visual (schema, styles, drag,
+// rows/groups, JSON panel) once.
 //
-// Adapters: src/components/playground.tsx (hook) and src/components/vanilla-playground.tsx
-// (reducer). The standalone, fuller version of this widget lives at examples/react/basic/src/App.tsx.
+// Adapter: src/components/playground.tsx (hook). The standalone, fuller version of this
+// widget lives at examples/react/basic/src/App.tsx.
 
 import { useState, useSyncExternalStore } from 'react';
 import { defineSchema } from '@grnrb/query-builder-core';

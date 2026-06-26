@@ -1,0 +1,37 @@
+---
+title: Drag and drop
+description: Reorder nodes with moveNode — and the one index subtlety to watch for.
+---
+
+Reordering maps onto [`moveNode`](/docs/core/tree-helpers): on drop, call
+`qb.moveNode(draggedId, targetGroupId, index)`. There is **one subtlety** — `moveNode` removes
+the dragged node first, then inserts. So when you drag a node **downward within the same
+group**, the removal shifts later indices down by one; subtract one in that case.
+
+```ts
+// Find a node's parent group and its index within that group.
+function findParentAndIndex(node, childId) {
+  if (node.type !== "group") return null;
+  for (let i = 0; i < node.children.length; i++) {
+    if (node.children[i].id === childId) return { parentId: node.id, index: i };
+    const found = findParentAndIndex(node.children[i], childId);
+    if (found) return found;
+  }
+  return null;
+}
+
+function onDrop(query, draggingId, groupId, dropIndex) {
+  const source = findParentAndIndex(query, draggingId);
+  const insertIndex =
+    source && source.parentId === groupId && source.index < dropIndex
+      ? dropIndex - 1
+      : dropIndex;
+  qb.moveNode(draggingId, groupId, insertIndex);
+}
+```
+
+Because reordering goes through `moveNode`, the [guards](/docs/core/tree-helpers) apply
+automatically — you can't orphan a subtree by dropping a group into its own child. This is
+exactly the logic the home-page playground uses; the standalone
+[`examples/react/basic`](https://github.com/GRNRB/query-builder/tree/main/examples/react/basic)
+app wires it to native drag events.

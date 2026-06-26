@@ -1,0 +1,60 @@
+---
+title: Overview
+description: The framework-agnostic engine — schema, immutable tree, reducer, and tree helpers.
+---
+
+`@grnrb/query-builder-core` is the whole engine: it defines the [schema](/docs/core/schema),
+the immutable [query tree](/docs/core/query-tree), the [reducer](/docs/core/reducer), and the
+[tree helpers](/docs/core/tree-helpers). It has **no dependencies and no framework** — use it
+from Node, a server, tests, or any UI layer.
+
+Everything documented here is exported from the core and **re-exported** from
+`@grnrb/react-query-builder` (which adds the [`useQueryBuilder`](/docs/frameworks/react/api)
+hook). A React app installs only the React package; a non-React app installs the core
+directly:
+
+```sh
+npm install @grnrb/query-builder-core
+```
+
+## What's in the box
+
+| Area | Exports | Page |
+| ---- | ------- | ---- |
+| **Schema** | `defineSchema` | [Schema](/docs/core/schema) |
+| **Tree** | `normalizeTree`, `defaultGenerateId` | [Query tree](/docs/core/query-tree) |
+| **Reducer** | `reducer`, `buildConditionPatch`, the `Action` union | [Reducer & actions](/docs/core/reducer) |
+| **Tree helpers** | `findNode`, `updateNode`, `removeNode`, `appendToGroup`, `insertIntoGroup`, `moveNode` | [Tree helpers](/docs/core/tree-helpers) |
+| **Types** | `QuerySchema`, `QueryNode`, `Arity`, … | [Types](/docs/core/types) |
+
+## How the pieces fit
+
+A **schema** describes what queries are allowed. A **query tree** is one such query — plain,
+immutable JSON whose root is always a group. You change a tree by feeding it (with an
+[action](/docs/core/reducer)) to the `reducer`, which returns the next tree; each action maps
+to an equivalent [tree helper](/docs/core/tree-helpers) you can also call directly. Every
+operation is immutable and guarded — it returns a new tree, or the *same reference* when
+nothing changed.
+
+<Cards>
+  <Card
+    title="Schema"
+    description="defineSchema, fields, operators, and arity."
+    href="/docs/core/schema"
+  />
+  <Card
+    title="Query tree"
+    description="Condition & group nodes, inputs, ids, and immutability."
+    href="/docs/core/query-tree"
+  />
+  <Card
+    title="Reducer & actions"
+    description="reducer, the action set, and buildConditionPatch."
+    href="/docs/core/reducer"
+  />
+  <Card
+    title="Tree helpers"
+    description="findNode, moveNode, and the rest of the immutable toolkit."
+    href="/docs/core/tree-helpers"
+  />
+</Cards>

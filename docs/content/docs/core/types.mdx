@@ -1,0 +1,36 @@
+---
+title: Types
+description: The full type catalog — generated from the library source.
+---
+
+These tables are generated from the library source, so they always match the published types.
+Every type here is exported from `@grnrb/query-builder-core` and re-exported from
+`@grnrb/react-query-builder`.
+
+## OperatorDefinition
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="OperatorDefinition" />
+
+## FieldDefinition
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="FieldDefinition" />
+
+## QuerySchema
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="QuerySchema" />
+
+## GroupNode
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="GroupNode" />
+
+## Type aliases
+
+| Type                             | Meaning |
+| -------------------------------- | ------- |
+| `Arity`                          | `"none" \| "one" \| "two" \| "many"`. |
+| `ValueForArity<TArity, TValue>`  | Maps an arity to its [value shape](/docs/core/schema#operators-and-arity). |
+| `ConditionNode` / `GroupNode`    | The two node kinds; `QueryNode` is their union. |
+| `GroupOperatorId<TSchema>`       | Union of the schema's group operator ids. |
+| `ConditionNodeInput` / `GroupNodeInput` / `QueryNodeInput` | Input variants with `id` optional. |
+| `ValidateFieldDefaults<TFields>` | Constraint ensuring each `defaultOperator` is supported. |
+| `Action<TSchema>`                | The reducer action union (see [Reducer & actions](/docs/core/reducer#the-action-set)). |

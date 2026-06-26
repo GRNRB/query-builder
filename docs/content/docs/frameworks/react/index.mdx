@@ -1,0 +1,147 @@
+---
+title: Get started
+description: Build and mutate query trees with the useQueryBuilder hook.
+---
+
+`@grnrb/react-query-builder` adds the **`useQueryBuilder`** hook over the
+[core](/docs/core) and re-exports everything else (`defineSchema`, the tree helpers, all
+types) — so a React app imports only this one package.
+
+## Install
+
+```sh
+npm install @grnrb/react-query-builder
+# or: pnpm add @grnrb/react-query-builder
+```
+
+`react` (>= 18) is a peer dependency.
+
+## Define a schema
+
+The schema declares your fields, their operators, and how groups combine — see
+[Schema](/docs/core/schema) for the full detail. Wrap it in `defineSchema` so TypeScript
+infers the literal types.
+
+```ts
+import { defineSchema } from "@grnrb/react-query-builder";
+
+const schema = defineSchema({
+  fields: [
+    { id: "name", label: "Name", supportedOperators: ["eq", "contains"] },
+    { id: "age", label: "Age", supportedOperators: ["eq", "gt", "lt"] },
+  ],
+  conditionOperators: [
+    { id: "eq", arity: "one", label: "equals" },
+    { id: "contains", arity: "one", label: "contains" },
+    { id: "gt", arity: "one", label: "greater than" },
+    { id: "lt", arity: "one", label: "less than" },
+  ],
+  groupOperators: [
+    { id: "and", arity: "many", label: "AND" },
+    { id: "or", arity: "many", label: "OR" },
+  ],
+});
+```
+
+## Build a query
+
+`useQueryBuilder` takes the schema and an `initialQuery` (ids optional — the hook fills them
+in via [`normalizeTree`](/docs/core/query-tree#normalizetree)) and returns the current `query`
+plus mutation helpers.
+
+```tsx
+import { useQueryBuilder } from "@grnrb/react-query-builder";
+
+function Filters() {
+  const qb = useQueryBuilder(schema, {
+    initialQuery: {
+      type: "group",
+      operator: "and",
+      children: [
+        { type: "condition", field: "name", operator: "eq", value: "Alice" },
+      ],
+    },
+  });
+
+  return <pre>{JSON.stringify(qb.query, null, 2)}</pre>;
+}
+```
+
+`qb.query` is the normalized [query tree](/docs/core/query-tree); the helpers are **stable**
+(memoized) callbacks that **normalize** your inputs for you.
+
+## Mutate the tree
+
+Call a helper with the id of the node you're targeting. Use `qb.query.id` (the root group's
+id) to target the top level.
+
+```ts
+// Add
+qb.addCondition(groupId, {
+  type: "condition",
+  field: "age",
+  operator: "gt",
+  value: 30,
+});
+qb.addGroup(groupId, "or", [
+  { type: "condition", field: "status", operator: "eq", value: "active" },
+]);
+
+// Insert at an index
+qb.insertCondition(groupId, 0, {
+  type: "condition",
+  field: "name",
+  operator: "eq",
+  value: "",
+});
+qb.insertGroup(groupId, 0, "and");
+
+// Remove & move
+qb.removeNode(nodeId); // removing the root is a no-op
+qb.moveNode(nodeId, targetGroupId, index); // index optional → appends
+
+// Update
+qb.updateCondition(nodeId, { value: "Bob" }); // simple value change
+qb.updateCondition(nodeId, { field: "age" }); // operator/value reset if incompatible
+qb.updateGroupOperator(groupId, "or"); // toggle a group's operator
+```
+
+Each helper dispatches one [reducer action](/docs/core/reducer) under the hood:
+
+| Helper                            | Action                  |
+| --------------------------------- | ----------------------- |
+| `addCondition` / `addGroup`       | `APPEND_NODE`           |
+| `insertCondition` / `insertGroup` | `INSERT_NODE`           |
+| `removeNode`                      | `REMOVE_NODE`           |
+| `moveNode`                        | `MOVE_NODE`             |
+| `updateCondition`                 | `UPDATE_NODE`           |
+| `updateGroupOperator`             | `UPDATE_GROUP_OPERATOR` |
+
+<Callout title="Field changes reset the operator/value">
+  `updateCondition` runs
+  [`buildConditionPatch`](/docs/core/reducer#buildconditionpatch) for you: if the new `field`
+  doesn't support the current operator, the operator resets to the new field's default and the
+  value clears. `moveNode` carries its [guards](/docs/core/tree-helpers) (it won't orphan a
+  subtree). For drag-to-reorder, mind the index adjustment in [Drag and
+  drop](/docs/guides/drag-and-drop).
+</Callout>
+
+## See also
+
+<Cards>
+  <Card
+    title="API"
+    description="The useQueryBuilder options, return value, and TypeScript inference."
+    href="/docs/frameworks/react/api"
+  />
+  <Card
+    title="Core concepts"
+    description="The schema, the query tree, and immutability."
+    href="/docs/core"
+  />
+  <Card
+    title="Guides"
+    description="Controlled mode, serialization, drag-and-drop, and undo/redo."
+    href="/docs/guides/controlled-mode"
+  />
+</Cards>

@@ -1,0 +1,39 @@
+---
+title: Overview
+description: Two complete React apps built on the hook — a classic filter UI and a keyboard-first builder.
+---
+
+Two standalone example apps live in the repo, and both import
+`@grnrb/react-query-builder` straight from source — so they always exercise the **current**
+library, not a published snapshot. They're the best way to see the API wired into real UI.
+
+| Example | What it shows | Live demo |
+| ------- | ------------- | --------- |
+| [Basic](/docs/examples/basic) | The classic filter UI — field/operator/value rows, nested groups, drag-to-reorder. The clearest read of [`useQueryBuilder`](/docs/frameworks/react/api). | [Try it](/docs/examples/basic) |
+| [Modern](/docs/examples/modern) | A keyboard-first "expression" builder with a command palette, undo/redo, and focus management. | [Try it](/docs/examples/modern) |
+
+Both render the same [schema](/docs/core/schema) (name / age / status / active, with `and` /
+`or` / `xor` groups), so you can compare two very different UIs over identical state.
+
+<Cards>
+  <Card
+    title="Basic"
+    description="Selects, value inputs, nested groups, and drag-to-reorder."
+    href="/docs/examples/basic"
+  />
+  <Card
+    title="Modern"
+    description="Keyboard-driven tokens, a command palette, and undo/redo."
+    href="/docs/examples/modern"
+  />
+</Cards>
+
+## Run them locally
+
+```sh
+git clone https://github.com/GRNRB/query-builder
+cd query-builder
+pnpm install
+pnpm --filter './packages/*' run build   # build the libraries the examples depend on
+pnpm --filter basic dev                   # or: pnpm --filter modern dev
+```

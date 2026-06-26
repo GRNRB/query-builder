@@ -20,7 +20,7 @@ import type { Focus } from "./lib/focus";
 import { arityOf, initialQuery, STARTER } from "./schema";
 import type { GroupNodeT } from "./schema";
 
-export default function App() {
+export default function App({ embedded = false }: { embedded?: boolean } = {}) {
   const { qb, undo, redo } = useUndoableQuery(initialQuery);
 
   const [editing, setEditing] = useState<{
@@ -143,18 +143,20 @@ export default function App() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        py: 6,
-        px: 3,
+        minHeight: embedded ? "auto" : "100vh",
+        bgcolor: embedded ? "transparent" : "background.default",
+        py: embedded ? 0 : 6,
+        px: embedded ? 0 : 3,
         display: "flex",
         justifyContent: "center",
       }}
     >
       <Box sx={{ width: "100%", maxWidth: 920 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Keyboard-first
-        </Typography>
+        {!embedded && (
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Keyboard-first
+          </Typography>
+        )}
 
         <Legend />
 
@@ -199,7 +201,7 @@ export default function App() {
           )}
         </BuilderProvider>
 
-        <JsonPanel query={qb.query} />
+        {!embedded && <JsonPanel query={qb.query} />}
       </Box>
     </Box>
   );

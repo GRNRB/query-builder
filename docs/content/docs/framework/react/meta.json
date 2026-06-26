@@ -1,5 +1,0 @@
-{
-  "title": "React",
-  "root": true,
-  "pages": ["index", "concepts", "reference", "playground"]
-}

@@ -1,0 +1,78 @@
+---
+title: API
+description: The useQueryBuilder hook — options, return value, mutation helpers, and TypeScript inference.
+---
+
+`useQueryBuilder` is the entire React surface. It holds (or wraps) the query tree and returns
+it alongside stable, memoized mutation helpers. Everything else you import from
+`@grnrb/react-query-builder` is [re-exported from the core](/docs/core).
+
+## useQueryBuilder
+
+```ts
+function useQueryBuilder<TSchema>(
+  schema: TSchema,
+  options: UseQueryBuilderOptions<TSchema>,
+): UseQueryBuilderReturn<TSchema>
+```
+
+Pass `initialQuery` for uncontrolled state, or `query` + `onChange` for controlled — see
+[Controlled mode](/docs/guides/controlled-mode).
+
+### Options
+
+<AutoTypeTable path="../packages/react-query-builder/src/types.ts" name="UseQueryBuilderOptions" />
+
+### Return value
+
+<AutoTypeTable path="../packages/react-query-builder/src/types.ts" name="UseQueryBuilderReturn" />
+
+## Mutation helpers
+
+Every helper is a stable callback that normalizes your inputs and dispatches one
+[reducer action](/docs/core/reducer). Target a node by its `id` (use `qb.query.id` for the
+root).
+
+| Helper | Signature | Action |
+| ------ | --------- | ------ |
+| `addCondition` | `(groupId, condition)` | `APPEND_NODE` |
+| `addGroup` | `(groupId, operator, children?)` | `APPEND_NODE` |
+| `insertCondition` | `(groupId, index, condition)` | `INSERT_NODE` |
+| `insertGroup` | `(groupId, index, operator, children?)` | `INSERT_NODE` |
+| `removeNode` | `(nodeId)` | `REMOVE_NODE` |
+| `moveNode` | `(nodeId, targetGroupId, index?)` | `MOVE_NODE` |
+| `updateCondition` | `(nodeId, patch)` | `UPDATE_NODE` |
+| `updateGroupOperator` | `(groupId, operator)` | `UPDATE_GROUP_OPERATOR` |
+
+See [Mutate the tree](/docs/frameworks/react#mutate-the-tree) for worked examples. The matching
+helper *types* (`AddCondition`, `AddGroup`, `MoveNode`, …) are exported too, for annotating
+props you thread down to child components.
+
+## TypeScript inference
+
+[`defineSchema`](/docs/core/schema#defineschema) uses a `const` type parameter, so every
+literal is preserved. Capture the schema type with `typeof` and reuse it:
+
+```ts
+const schema = defineSchema({
+  /* ... */
+});
+type S = typeof schema;
+```
+
+From `S`, the types flow automatically:
+
+- **Operators per field** — `QueryNode<S>` only allows a condition's `operator` to be one of
+  its `field`'s `supportedOperators`.
+- **Value shape per operator** — driven by [arity](/docs/core/schema#operators-and-arity)
+  (`none` forbids `value`, `one` requires one).
+- **Group operators** — `GroupOperatorId<S>` is the union of your group operator ids.
+
+A handy alias types child components against the hook's return:
+
+```ts
+type QB = ReturnType<typeof useQueryBuilder<S>>;
+```
+
+`ValidateFieldDefaults` makes a `defaultOperator` that isn't in `supportedOperators` a
+**compile error**, caught at `defineSchema`.

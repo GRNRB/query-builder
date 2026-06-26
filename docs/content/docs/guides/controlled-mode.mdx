@@ -1,0 +1,34 @@
+---
+title: Controlled mode
+description: Own the query state yourself with query + onChange.
+---
+
+`useQueryBuilder` works **uncontrolled** or **controlled** — same return value and helpers
+either way, only **who owns the state** differs.
+
+**Uncontrolled** — pass `initialQuery`; the hook holds state in its own `useReducer`. Simplest
+for self-contained builders. This is the [Get started](/docs/frameworks/react) default.
+
+**Controlled** — pass `query` + `onChange`; you own the state and the hook calls `onChange`
+with the next tree after every mutation. Use it when the query must live in a parent store, be
+validated, debounced, or persisted.
+
+```tsx
+const [query, setQuery] = useState<QueryNode<typeof schema>>(() => ({
+  id: "root",
+  type: "group",
+  operator: "and",
+  children: [],
+}));
+
+const qb = useQueryBuilder(schema, { query, onChange: setQuery });
+```
+
+<Callout title="In controlled mode, seed the root id yourself">
+  Because you create the initial `query` object directly (not via `initialQuery`), give the
+  root a stable `id` (e.g. `"root"`). New nodes added through the helpers are still normalized
+  for you.
+</Callout>
+
+Controlled mode is also what makes whole-tree history possible — every change flows through
+`onChange`, so you can snapshot the previous tree. See [Undo / redo](/docs/guides/undo-redo).

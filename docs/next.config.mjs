@@ -13,6 +13,8 @@ const basePath = getBasePath();
 /** @type {import('next').NextConfig} */
 const config = {
   serverExternalPackages: ['@takumi-rs/image-response'],
+  // The `modern` example ships raw TSX source (no build step); Next transpiles it here.
+  transpilePackages: ['modern'],
   output: 'export',
   reactStrictMode: true,
   basePath,

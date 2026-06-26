@@ -1,0 +1,42 @@
+---
+title: Tree helpers
+description: findNode, updateNode, removeNode, appendToGroup, insertIntoGroup, moveNode.
+---
+
+The tree helpers are immutable building blocks — each returns a new tree, or the *same
+reference* when nothing changed. Every [reducer action](/docs/core/reducer) is built on one of
+these, and you can call them directly when you'd rather use plain functions than dispatch
+actions.
+
+| Function | Signature |
+| -------- | --------- |
+| `findNode` | `(root, id) => QueryNode \| undefined` — depth-first lookup |
+| `updateNode` | `(root, id, updater) => QueryNode` — apply `updater` to one node |
+| `removeNode` | `(root, id) => QueryNode` — remove a node (never the root) |
+| `appendToGroup` | `(root, groupId, node) => QueryNode` — append as last child |
+| `insertIntoGroup` | `(root, groupId, index, node) => QueryNode` — insert (index clamped) |
+| `moveNode` | `(root, nodeId, targetGroupId, index?) => QueryNode` — move, with guards |
+| `defaultGenerateId` | `() => string` — `crypto.randomUUID()` |
+
+```ts
+import { appendToGroup, findNode, normalizeTree } from "@grnrb/query-builder-core";
+
+const node = findNode(query, "c1");
+const next = appendToGroup(
+  query,
+  query.id,
+  normalizeTree({ type: "condition", field: "age", operator: "gt", value: 30 }),
+);
+```
+
+## Guards & referential equality
+
+`removeNode` never removes the root. `moveNode` refuses to move a node into itself or one of
+its descendants (which would orphan the moved subtree) and refuses a target that doesn't
+exist. In every such case the helper returns the **same tree reference** it was given — so
+`next === root` tells you nothing changed. See [Immutability](/docs/core/query-tree#immutability).
+
+<Callout>
+New nodes passed to `appendToGroup` / `insertIntoGroup` / `moveNode` must already have ids —
+wrap them in [`normalizeTree`](/docs/core/query-tree#normalizetree) first.
+</Callout>

@@ -11,8 +11,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@grnrb/query-builder-core": "workspace:*",
     "@grnrb/react-query-builder": "workspace:*",
+    "@mui/material": "^9.0.1",
     "@orama/orama": "^3.1.18",
     "@takumi-rs/image-response": "^1.8.5",
     "fumadocs-core": "16.10.5",
@@ -20,6 +23,7 @@
     "fumadocs-typescript": "5.2.6",
     "fumadocs-ui": "16.10.5",
     "lucide-react": "^1.20.0",
+    "modern": "workspace:*",
     "next": "16.2.9",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
