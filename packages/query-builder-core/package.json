@@ -1,6 +1,6 @@
 {
   "name": "@grnrb/query-builder-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Framework-agnostic core for building structured query/filter trees: types, an immutable query tree, schema definition, and a reducer.",
   "license": "MIT",
   "repository": {
@@ -25,7 +25,11 @@
       }
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "access": "public"
   },
