@@ -19,11 +19,11 @@ beyond a form to show how much UI you can build on top of plain immutable trees:
 | Feature | How it's done | Related |
 | ------- | ------------- | ------- |
 | **Undo / redo** | `useUndoableQuery` runs the hook in [controlled mode](/docs/guides/controlled-mode) and keeps `past` / `present` / `future` snapshots. | [Undo / redo](/docs/guides/undo-redo) |
-| **Command palette** | A fuzzy picker for a token's field, operator, or combinator — every choice routes through `updateCondition` / `updateGroupOperator`. | [Schema](/docs/core/schema) |
+| **Command palette** | A fuzzy picker for a token's field, operator, or combinator — every choice routes through `updateCondition` / `updateGroupOperator`. | [Schema](/docs/core#schema) |
 | **Keyboard navigation** | `useQueryKeyboard` + `useFocusManager` map keys to mutations and move focus to the right token after each edit. | [API](/docs/frameworks/react/api) |
-| **Arity-aware editing** | The value editor only opens for operators whose [arity](/docs/core/schema#operators-and-arity) takes a value; `is_set` has none. | [Arity](/docs/core/schema#operators-and-arity) |
+| **Arity-aware editing** | The value editor only opens for operators whose [arity](/docs/core#operators-and-arity) takes a value; `is_set` has none. | [Arity](/docs/core#operators-and-arity) |
 
-The key takeaway: because a query is just an [immutable tree](/docs/core/query-tree), features
+The key takeaway: because a query is just an [immutable tree](/docs/core#query-tree), features
 like undo/redo and focus restoration are *application* concerns layered on top — the library
 stays a thin, predictable state engine underneath.
 

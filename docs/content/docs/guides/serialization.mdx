@@ -13,19 +13,19 @@ localStorage.setItem("filters", JSON.stringify(qb.query)); // or send to your AP
 
 A persisted tree **already has ids**, so parse and use it as-is (as `initialQuery`, or as the
 controlled `query`). For a **template authored without ids**, normalize it on load —
-[`normalizeTree`](/docs/core/query-tree#normalizetree) only fills *missing* ids, so it's safe
+[`normalizeQuery`](/docs/core#normalizequery) only fills *missing* ids, so it's safe
 either way:
 
 ```ts
-import { normalizeTree } from "@grnrb/query-builder-core";
+import { normalizeQuery } from "@grnrb/query-builder-core";
 
-const tree = normalizeTree(templateWithoutIds);
+const tree = normalizeQuery(templateWithoutIds);
 ```
 
 ## Translating to a backend filter
 
 Turning a tree into a SQL / Mongo / Elasticsearch predicate is a recursive walk — handle the
-two `type`s and read each operator's [arity](/docs/core/schema#operators-and-arity) to
+two `type`s and read each operator's [arity](/docs/core#operators-and-arity) to
 interpret `value`:
 
 ```ts

@@ -4,8 +4,8 @@ description: Build and mutate query trees with the useQueryBuilder hook.
 ---
 
 `@grnrb/react-query-builder` adds the **`useQueryBuilder`** hook over the
-[core](/docs/core) and re-exports everything else (`defineSchema`, the tree helpers, all
-types) — so a React app imports only this one package.
+[core](/docs/core) and re-exports everything else (`defineSchema`, the `reducer`, the
+utilities, all types) — so a React app imports only this one package.
 
 ## Install
 
@@ -19,7 +19,7 @@ npm install @grnrb/react-query-builder
 ## Define a schema
 
 The schema declares your fields, their operators, and how groups combine — see
-[Schema](/docs/core/schema) for the full detail. Wrap it in `defineSchema` so TypeScript
+[Schema](/docs/core#schema) for the full detail. Wrap it in `defineSchema` so TypeScript
 infers the literal types.
 
 ```ts
@@ -46,7 +46,7 @@ const schema = defineSchema({
 ## Build a query
 
 `useQueryBuilder` takes the schema and an `initialQuery` (ids optional — the hook fills them
-in via [`normalizeTree`](/docs/core/query-tree#normalizetree)) and returns the current `query`
+in via [`normalizeQuery`](/docs/core#normalizequery)) and returns the current `query`
 plus mutation helpers.
 
 ```tsx
@@ -67,7 +67,7 @@ function Filters() {
 }
 ```
 
-`qb.query` is the normalized [query tree](/docs/core/query-tree); the helpers are **stable**
+`qb.query` is the normalized [query tree](/docs/core#query-tree); the helpers are **stable**
 (memoized) callbacks that **normalize** your inputs for you.
 
 ## Mutate the tree
@@ -106,7 +106,7 @@ qb.updateCondition(nodeId, { field: "age" }); // operator/value reset if incompa
 qb.updateGroupOperator(groupId, "or"); // toggle a group's operator
 ```
 
-Each helper dispatches one [reducer action](/docs/core/reducer) under the hood:
+Each helper dispatches one [reducer action](/docs/core#reducer-and-actions) under the hood:
 
 | Helper                            | Action                  |
 | --------------------------------- | ----------------------- |
@@ -118,12 +118,11 @@ Each helper dispatches one [reducer action](/docs/core/reducer) under the hood:
 | `updateGroupOperator`             | `UPDATE_GROUP_OPERATOR` |
 
 <Callout title="Field changes reset the operator/value">
-  `updateCondition` runs
-  [`buildConditionPatch`](/docs/core/reducer#buildconditionpatch) for you: if the new `field`
-  doesn't support the current operator, the operator resets to the new field's default and the
-  value clears. `moveNode` carries its [guards](/docs/core/tree-helpers) (it won't orphan a
-  subtree). For drag-to-reorder, mind the index adjustment in [Drag and
-  drop](/docs/guides/drag-and-drop).
+  `updateCondition` just dispatches `UPDATE_NODE`; the reducer [reconciles the
+  condition](/docs/core#updating-a-condition) for you: if the new `field` doesn't support the current
+  operator, the operator resets to the new field's default and the value clears. `moveNode` carries
+  its [guards](/docs/core#immutability) (it won't orphan a subtree). For drag-to-reorder, mind the
+  index adjustment in [Drag and drop](/docs/guides/drag-and-drop).
 </Callout>
 
 ## See also

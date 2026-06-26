@@ -1,4 +1,0 @@
-{
-  "title": "Core API",
-  "pages": ["index", "schema", "query-tree", "reducer", "tree-helpers", "types"]
-}

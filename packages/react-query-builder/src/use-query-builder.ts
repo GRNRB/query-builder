@@ -1,15 +1,13 @@
-import { useCallback, useReducer } from "react";
+import { useCallback, useMemo, useReducer } from "react";
 import type {
   QueryNode,
   QuerySchema,
   Action,
 } from "@grnrb/query-builder-core";
 import {
-  buildConditionPatch,
+  createReducer,
   defaultGenerateId,
-  findNode,
-  normalizeTree,
-  reducer,
+  normalizeQuery,
 } from "@grnrb/query-builder-core";
 import type {
   AddCondition,
@@ -32,13 +30,15 @@ export function useQueryBuilder<const TSchema extends QuerySchema>(
   const controlledQuery = "query" in options ? options.query : undefined;
   const controlledOnChange = "query" in options ? options.onChange : undefined;
 
+  const reducer = useMemo(() => createReducer(schema), [schema]);
+
   const [uncontrolledQuery, dispatch] = useReducer(
     reducer,
     options,
     (opts): QueryNode<TSchema> =>
       "query" in opts
         ? opts.query
-        : normalizeTree(opts.initialQuery, generateId),
+        : normalizeQuery(opts.initialQuery, generateId),
   );
 
   const query = controlledQuery ?? uncontrolledQuery;
@@ -51,15 +51,16 @@ export function useQueryBuilder<const TSchema extends QuerySchema>(
         dispatch(action);
       }
     },
-    [controlledOnChange, controlledQuery, dispatch],
+    [controlledOnChange, controlledQuery, dispatch, reducer],
   );
 
+  // Ids are assigned here, before dispatch, so the reducer stays pure.
   const addCondition: AddCondition<TSchema> = useCallback(
     (groupId, node) => {
       mutate({
         type: "APPEND_NODE",
         groupId,
-        node: normalizeTree(node, generateId),
+        node: normalizeQuery(node, generateId),
       });
     },
     [mutate, generateId],
@@ -70,7 +71,7 @@ export function useQueryBuilder<const TSchema extends QuerySchema>(
       mutate({
         type: "APPEND_NODE",
         groupId,
-        node: normalizeTree({ type: "group", operator, children }, generateId),
+        node: normalizeQuery({ type: "group", operator, children }, generateId),
       });
     },
     [mutate, generateId],
@@ -82,7 +83,7 @@ export function useQueryBuilder<const TSchema extends QuerySchema>(
         type: "INSERT_NODE",
         groupId,
         index,
-        node: normalizeTree(node, generateId),
+        node: normalizeQuery(node, generateId),
       });
     },
     [mutate, generateId],
@@ -94,7 +95,7 @@ export function useQueryBuilder<const TSchema extends QuerySchema>(
         type: "INSERT_NODE",
         groupId,
         index,
-        node: normalizeTree({ type: "group", operator, children }, generateId),
+        node: normalizeQuery({ type: "group", operator, children }, generateId),
       });
     },
     [mutate, generateId],
@@ -116,17 +117,11 @@ export function useQueryBuilder<const TSchema extends QuerySchema>(
 
   const updateCondition: UpdateCondition<TSchema> = useCallback(
     (nodeId, patch) => {
-      const current = findNode(query, nodeId);
-      const finalPatch = current
-        ? buildConditionPatch(schema, current, patch)
-        : patch;
-      mutate({
-        type: "UPDATE_NODE",
-        nodeId,
-        patch: finalPatch,
-      });
+      // The reducer reconciles operator/value against the schema when the field changes,
+      // so the hook just forwards the patch.
+      mutate({ type: "UPDATE_NODE", nodeId, patch });
     },
-    [mutate, query, schema],
+    [mutate],
   );
 
   const updateGroupOperator: UpdateGroupOperator<TSchema> = useCallback(

@@ -15,7 +15,7 @@ the stacks.
 import { useCallback, useState } from "react";
 import {
   defaultGenerateId,
-  normalizeTree,
+  normalizeQuery,
   useQueryBuilder,
 } from "@grnrb/react-query-builder";
 import type { QueryNode, QueryNodeInput } from "@grnrb/react-query-builder";
@@ -29,7 +29,7 @@ interface History {
 export function useUndoableQuery(initial: QueryNodeInput<typeof schema>) {
   const [history, setHistory] = useState<History>(() => ({
     past: [],
-    present: normalizeTree(initial, defaultGenerateId),
+    present: normalizeQuery(initial, defaultGenerateId),
     future: [],
   }));
 
@@ -65,7 +65,7 @@ export function useUndoableQuery(initial: QueryNodeInput<typeof schema>) {
 ```
 
 The `next === h.present` check leans on [referential
-equality](/docs/core/query-tree#immutability): a no-op mutation (say, removing the root)
+equality](/docs/core#immutability): a no-op mutation (say, removing the root)
 returns the same tree, so it never pollutes the history with a duplicate entry.
 
 <Callout title="See it running">

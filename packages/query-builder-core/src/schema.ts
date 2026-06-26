@@ -5,8 +5,13 @@ import type {
   ValidateFieldDefaults,
 } from "./type";
 
-/** Resolves the final patch for a condition update, resetting operator/value when the new field doesn't support the current operator. */
-export function buildConditionPatch<TSchema extends QuerySchema>(
+/**
+ * Reconciles a condition patch against the schema: when the patch switches to a `field`
+ * that doesn't support the current operator, it resets the operator to that field's default
+ * and clears the value. Package-internal — the reducer applies this on every `UPDATE_NODE`,
+ * so consumers never call it directly.
+ */
+export function reconcileConditionPatch<TSchema extends QuerySchema>(
   schema: TSchema,
   current: QueryNode<TSchema>,
   patch: Partial<ConditionNodeInput<TSchema>>,

@@ -1,26 +1,5 @@
-import type {
-  QueryNode,
-  QueryNodeInput,
-  QuerySchema,
-} from "./type";
-
-export const defaultGenerateId = (): string => crypto.randomUUID();
-
-/** Recursively assigns ids to any node in the tree that is missing one. */
-export function normalizeTree<TSchema extends QuerySchema>(
-  node: QueryNodeInput<TSchema>,
-  generateId: () => string = defaultGenerateId,
-): QueryNode<TSchema> {
-  const id = node.id ?? generateId();
-  if (node.type === "group") {
-    return {
-      ...node,
-      id,
-      children: node.children.map((child) => normalizeTree(child, generateId)),
-    };
-  }
-  return { ...node, id };
-}
+import type { QueryNode, QuerySchema } from "./type";
+import { findNode } from "./utils";
 
 /** Applies `updater` to the node matching `id`, leaving all other nodes unchanged. */
 export function updateNode<TSchema extends QuerySchema>(
@@ -38,7 +17,7 @@ export function updateNode<TSchema extends QuerySchema>(
   return { ...root, children: nextChildren };
 }
 
-/** Removes the node with the given `id` from the tree, returning the updated root. */
+/** Removes the node with the given `id` from the query, returning the updated root. */
 export function removeNode<TSchema extends QuerySchema>(
   root: QueryNode<TSchema>,
   id: string,
@@ -83,20 +62,6 @@ export function appendToGroup<TSchema extends QuerySchema>(
 
   if (nextChildren.every((c, i) => c === root.children[i])) return root;
   return { ...root, children: nextChildren };
-}
-
-/** Returns the first node matching `id` via depth-first search, or `undefined` if not found. */
-export function findNode<TSchema extends QuerySchema>(
-  root: QueryNode<TSchema>,
-  id: string,
-): QueryNode<TSchema> | undefined {
-  if (root.id === id) return root;
-  if (root.type !== "group") return undefined;
-  for (const child of root.children) {
-    const found = findNode(child, id);
-    if (found) return found;
-  }
-  return undefined;
 }
 
 /** Inserts `node` at `index` inside the group matching `groupId` (clamped to array length). */

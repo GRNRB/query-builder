@@ -1,7 +1,7 @@
 # @grnrb/query-builder-core
 
 Framework-agnostic core for building structured query/filter trees: a typed schema,
-immutable tree helpers, and a reducer. Ships dual ESM/CJS builds with full TypeScript types.
+an immutable query tree, and a reducer. Ships dual ESM/CJS builds with full TypeScript types.
 
 For React, use [`@grnrb/react-query-builder`](https://www.npmjs.com/package/@grnrb/react-query-builder),
 which wraps this package in a `useQueryBuilder` hook.
@@ -18,7 +18,7 @@ npm install @grnrb/query-builder-core
 ## Usage
 
 ```ts
-import { defineSchema, normalizeTree, reducer } from "@grnrb/query-builder-core";
+import { createReducer, defineSchema, normalizeQuery } from "@grnrb/query-builder-core";
 
 const schema = defineSchema({
   fields: [
@@ -38,27 +38,29 @@ const schema = defineSchema({
 });
 
 // Normalize an input tree (assigns ids), then drive it with the reducer + actions.
-let tree = normalizeTree({
+let tree = normalizeQuery({
   type: "group",
   operator: "and",
   children: [{ type: "condition", field: "name", operator: "eq", value: "Alice" }],
 });
 
-// reducer(state, action) — actions are SCREAMING_SNAKE_CASE.
+// createReducer(schema) returns a pure reducer(state, action) — actions are SCREAMING_SNAKE_CASE.
+// New nodes need ids, so normalize them before APPEND_NODE / INSERT_NODE.
+const reducer = createReducer(schema);
 tree = reducer(tree, {
   type: "APPEND_NODE",
   groupId: tree.id,
-  node: normalizeTree({ type: "condition", field: "age", operator: "gt", value: 18 }),
+  node: normalizeQuery({ type: "condition", field: "age", operator: "gt", value: 18 }),
 });
 ```
 
 ## API
 
 See the [documentation](https://grnrb.github.io/query-builder/) for the full reference:
-[`defineSchema`](https://grnrb.github.io/query-builder/docs/core/define-schema),
-[tree helpers](https://grnrb.github.io/query-builder/docs/core/tree-helpers),
-the [`reducer`](https://grnrb.github.io/query-builder/docs/core/reducer), and the
-[types](https://grnrb.github.io/query-builder/docs/core/types).
+[`defineSchema`](https://grnrb.github.io/query-builder/docs/core#defineschema),
+the [`reducer` and actions](https://grnrb.github.io/query-builder/docs/core#reducer-and-actions),
+[utilities](https://grnrb.github.io/query-builder/docs/core#utilities), and the
+[types](https://grnrb.github.io/query-builder/docs/core#types).
 
 ## License
 

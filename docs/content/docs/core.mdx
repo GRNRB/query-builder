@@ -1,0 +1,377 @@
+---
+title: Core API
+description: The framework-agnostic engine — schema, immutable query tree, reducer, and types, in one place.
+---
+
+`@grnrb/query-builder-core` is the whole engine: the [schema](#schema) (your grammar), the
+immutable [query tree](#query-tree) (your data), the [reducer](#reducer-and-actions) that turns
+one valid tree into the next, and the [types](#types) that tie them together. It has **no
+dependencies, no framework, and no operators
+or semantics of its own** — you declare the vocabulary, it manages the tree. Use it from Node, a
+server, tests, or any UI layer.
+
+Everything here is exported from the core and re-exported from the framework adapters (e.g.
+`@grnrb/react-query-builder`), which add framework-native bindings on top.
+
+```sh
+npm install @grnrb/query-builder-core
+```
+
+## How the pieces fit
+
+A **schema** describes what queries are allowed. A **query tree** is one such query — plain,
+immutable JSON whose root is always a group. You change a tree by feeding it (with an
+[action](#the-action-set)) to the [`reducer`](#reducer-and-actions), which returns the next tree.
+Every operation is immutable and guarded — it returns a new tree, or the _same reference_ when
+nothing changed.
+
+## Schema
+
+The **schema** is a static description of _what's allowed_: which fields exist, which operators
+each field supports, and which operators may combine a group's children. It carries no state — it's
+the grammar your queries are written in — and because it's defined with `defineSchema`, TypeScript
+infers its literal types and drives the typing of everything else.
+
+```ts
+import { defineSchema } from "@grnrb/query-builder-core";
+
+// The operators here are whatever *you* declare — the engine ships none of its own.
+const schema = defineSchema({
+  fields: [
+    { id: "name", label: "Name", supportedOperators: ["eq", "contains"] },
+    { id: "age", label: "Age", supportedOperators: ["eq", "gt", "lt"] },
+  ],
+  conditionOperators: [
+    { id: "eq", arity: "one", label: "equals" },
+    { id: "contains", arity: "one", label: "contains" },
+    { id: "gt", arity: "one", label: "greater than" },
+    { id: "lt", arity: "one", label: "less than" },
+  ],
+  groupOperators: [
+    { id: "and", arity: "many", label: "AND" },
+    { id: "or", arity: "many", label: "OR" },
+  ],
+});
+```
+
+Only `fields` and `conditionOperators` are required; `groupOperators` is optional (but you'll
+almost always want it).
+
+### defineSchema
+
+```ts
+function defineSchema<const TSchema extends QuerySchema>(schema: TSchema): TSchema;
+```
+
+An identity function with a `const` type parameter: it returns the schema unchanged but
+**preserves its literal types** (powering operator-per-field inference) and, in non-production
+builds, **warns** about a duplicate field id, a duplicate condition operator id, or a
+`defaultOperator` not in `supportedOperators`.
+
+<Callout title="Always wrap with defineSchema">
+Passing a plain object to the reducer works at runtime, but `defineSchema` preserves the literal
+types (so operator/field inference works) **and** warns in development about duplicate ids or a
+`defaultOperator` that isn't supported.
+</Callout>
+
+### Fields
+
+Each field declares an `id`, a human `label`, and the operator ids it `supportedOperators`. An
+optional `defaultOperator` (which must be one of `supportedOperators`) is used when a condition
+switches to this field.
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="FieldDefinition" />
+
+### Operators and arity
+
+Condition operators and group operators share one shape. The key field is **`arity`** — how many
+values an operator takes — which determines the `value` shape of a condition using it. The engine
+makes no assumption about what an operator _means_; arity is purely about how many values it
+carries.
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="OperatorDefinition" />
+
+```ts
+type Arity = "none" | "one" | "two" | "many";
+```
+
+| Arity  | Example operator       | `value` shape              |
+| ------ | ---------------------- | -------------------------- |
+| `none` | `is_set`, `is_empty`   | _(omitted / `undefined`)_  |
+| `one`  | `eq`, `contains`, `gt` | a single value `TValue`    |
+| `two`  | `between`              | a tuple `[TValue, TValue]` |
+| `many` | `in`, `not_in`         | an array `TValue[]`        |
+
+The operator names above are only illustrative — they're ids _you_ would declare, not built-ins. A
+`none`-arity operator has **no value at all**:
+
+```ts
+// Active field whose only operator is `is_set` (arity: "none") — note: no `value` key.
+{ type: "condition", field: "active", operator: "is_set" }
+```
+
+This is why a UI typically renders the value input from the operator's arity: `one` shows a text
+box, `none` shows _(no value)_.
+
+<Callout title="Value shape is enforced">
+Because the schema knows each operator's arity, TypeScript enforces the right `value` per
+condition — a `none` operator forbids a `value`, a `one` operator requires one. See
+[TypeScript inference](/docs/frameworks/react/api#typescript-inference).
+</Callout>
+
+### Group operators
+
+The valid group operators are whatever you put in `groupOperators` (a boolean `and` / `or` pair
+with `arity: "many"` is the common case, but the engine doesn't require it). They combine a group's
+children. The `GroupOperatorId<TSchema>` helper extracts their ids as a union, so APIs that take a
+group operator (like adding a nested group, or changing how a group combines) only accept ids you
+declared.
+
+```ts
+// GroupOperatorId<typeof schema> is "and" | "or"
+```
+
+## Query tree
+
+A query is plain JSON — a **tree** whose root is always a `group`. Each child is either a
+`condition` (a leaf) or another `group`, so you can nest groups arbitrarily deep. There are no
+classes and no methods on the nodes; a query is just a serializable value you can store, send over
+the wire, and diff.
+
+```ts
+{
+  type: "group",
+  operator: "and",
+  children: [
+    { type: "condition", field: "name", operator: "eq", value: "Alice" },
+    {
+      type: "group",
+      operator: "or",
+      children: [
+        { type: "condition", field: "age", operator: "gt", value: 18 },
+      ],
+    },
+  ],
+}
+```
+
+### Condition nodes
+
+A `ConditionNode` is a leaf: a single filter as `field` + `operator` + (usually) `value`. The
+value's shape depends on the operator's [arity](#operators-and-arity).
+
+```ts
+{ id: "c1", type: "condition", field: "name", operator: "eq", value: "Alice" }
+```
+
+### Group nodes
+
+A `GroupNode` combines other nodes with an `operator` you declared. Its `children` are themselves
+conditions or groups.
+
+```ts
+{ id: "g1", type: "group", operator: "and", children: [ /* ConditionNode | GroupNode */ ] }
+```
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="GroupNode" />
+
+### Every node has an id
+
+Both node types carry a unique string `id`. Ids are how every operation targets a node — to move,
+remove, or update it, you pass its id.
+
+### Input variants
+
+When you _build_ a tree (an initial query, or a node you add), you usually don't invent ids by
+hand. The `*Input` types make `id` optional: `ConditionNodeInput`, `GroupNodeInput`, and the union
+`QueryNodeInput`. Pass an input, and `normalizeQuery` fills in any missing ids.
+
+```ts
+// No ids needed — normalizeQuery assigns them.
+{
+  type: "group",
+  operator: "and",
+  children: [{ type: "condition", field: "age", operator: "gt", value: 18 }],
+}
+```
+
+### normalizeQuery
+
+```ts
+function normalizeQuery(node: QueryNodeInput, generateId?: () => string): QueryNode;
+```
+
+Recursively assigns an `id` to any node missing one — turning an id-less input into a real query
+tree. It only fills _missing_ ids, so re-normalizing an already-complete tree is safe. Pass a custom
+`generateId` to control id generation (defaults to `defaultGenerateId`, i.e. `crypto.randomUUID()`);
+see [Custom ids](/docs/guides/custom-ids).
+
+```ts
+import { normalizeQuery } from "@grnrb/query-builder-core";
+
+const query = normalizeQuery({
+  type: "group",
+  operator: "and",
+  children: [{ type: "condition", field: "name", operator: "eq", value: "Alice" }],
+});
+```
+
+### Immutability
+
+Every operation is **immutable**: it returns a _new_ tree rather than mutating the one you passed.
+Two properties follow, and both are useful.
+
+**Structural sharing & referential equality.** When something changes, only the nodes on the path
+to the change are recreated — untouched subtrees keep their references. When nothing changes, the
+reducer returns the **exact same reference**:
+
+```ts
+const next = reducer(tree, { type: "APPEND_NODE", groupId: "missing-group-id", node });
+next === tree; // true — no such group, so nothing changed
+```
+
+You can detect "did anything change?" with `===`, and a UI can skip re-rendering structurally
+shared subtrees. `children` is declared `readonly` as a reminder to transform, not push.
+
+**Safety guards.** A few operations refuse to do something destructive and return the tree unchanged
+instead:
+
+- **Removing the root is a no-op** — the root anchors the query (dev-mode warning).
+- **Moving a node into itself or a descendant is rejected** — which would orphan the moved subtree
+  (so is moving to a target that doesn't exist).
+
+Because a query is plain immutable data, it's trivial to keep history
+([undo/redo](/docs/guides/undo-redo)), [serialize it](/docs/guides/serialization), and pass it
+through any store without defensive copying.
+
+<Callout>
+Treat a `QueryNode` as frozen. Change it through the [reducer](#reducer-and-actions) — never by
+assigning into `node.children` or a condition's fields directly.
+</Callout>
+
+## Reducer and actions
+
+`createReducer(schema)` returns the reducer you change a tree with: `reducer(state, action)` returns
+the next tree. The reducer is **pure** — it does no id generation, so the same action always yields
+the same tree (deterministic and replayable). Binding the schema lets it reconcile conditions for you
+(see [Updating a condition](#updating-a-condition)). Every mutation goes through it, and like the tree
+itself it's immutable and [guarded](#immutability) — an action that changes nothing returns the same
+reference. A framework adapter's helpers can dispatch these actions for you; on its own you call the
+reducer directly.
+
+```ts
+import { createReducer, normalizeQuery } from "@grnrb/query-builder-core";
+
+const reducer = createReducer(schema); // bind once, reuse for every action
+
+// Add — new nodes need ids, so normalize them first (the reducer never mints ids).
+query = reducer(query, {
+  type: "APPEND_NODE",
+  groupId: query.id,
+  node: normalizeQuery({ type: "condition", field: "age", operator: "gt", value: 30 }),
+});
+
+// Insert at an index
+query = reducer(query, {
+  type: "INSERT_NODE",
+  groupId: query.id,
+  index: 0,
+  node: normalizeQuery({ type: "group", operator: "or", children: [] }),
+});
+
+// Remove & move
+query = reducer(query, { type: "REMOVE_NODE", nodeId }); // root is a no-op
+query = reducer(query, { type: "MOVE_NODE", nodeId, targetGroupId, index }); // index optional
+
+// Change how a group combines its children
+query = reducer(query, { type: "UPDATE_GROUP_OPERATOR", groupId, operator: "or" });
+```
+
+<Callout title="Normalize new nodes">
+`APPEND_NODE` / `INSERT_NODE` take a node that already has ids — wrap new input in
+[`normalizeQuery`](#normalizequery) (it fills any missing ids, including nested children) so the
+reducer stays pure. `MOVE_NODE` / `REMOVE_NODE` reference existing nodes by id and carry no node.
+Every operation is immutable and [guarded](#immutability) (e.g. `MOVE_NODE` won't orphan a subtree).
+</Callout>
+
+### createReducer
+
+```ts
+function createReducer<TSchema>(
+  schema: TSchema,
+): (state: QueryNode<TSchema>, action: Action<TSchema>) => QueryNode<TSchema>;
+```
+
+Binds a `schema` and returns a **pure** reducer: it takes the current tree and an action and returns
+the next tree, generating no ids, so `reducer(state, action)` is deterministic and replayable. The
+schema is used only for the (also pure) `UPDATE_NODE` reconciliation — resetting a condition's
+operator/value when its field changes (see [Updating a condition](#updating-a-condition)). Like every
+operation on a tree it's immutable and guarded: an action that changes nothing returns the same
+reference.
+
+### The action set
+
+```ts
+type Action<TSchema> = /* the union below */;
+```
+
+| `type`                  | Fields                              |
+| ----------------------- | ----------------------------------- |
+| `APPEND_NODE`           | `groupId`, `node`                   |
+| `INSERT_NODE`           | `groupId`, `index`, `node`          |
+| `MOVE_NODE`             | `nodeId`, `targetGroupId`, `index?` |
+| `REMOVE_NODE`           | `nodeId`                            |
+| `UPDATE_NODE`           | `nodeId`, `patch` (condition only)  |
+| `UPDATE_GROUP_OPERATOR` | `groupId`, `operator`               |
+
+### Updating a condition
+
+`UPDATE_NODE` merges `patch` into the condition, but the reducer reconciles it against the schema
+first: if the `patch` changes the `field` to one that doesn't support the current operator, the
+operator resets to the new field's `defaultOperator` (or first supported) and `value` clears.
+Because the schema lives on the reducer, this happens out of the box — there's nothing to call:
+
+```ts
+const reducer = createReducer(schema);
+
+// "age" doesn't support the current operator → operator + value are reset automatically.
+query = reducer(query, { type: "UPDATE_NODE", nodeId, patch: { field: "age" } });
+```
+
+## Utilities
+
+Standalone helpers you reach for alongside the reducer — none of them mutate the tree (every change
+goes through the [reducer](#reducer-and-actions)).
+
+| Function            | Signature                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| `findNode`          | `(root, id) => QueryNode \| undefined` — depth-first lookup by id                   |
+| `normalizeQuery`    | `(node, generateId?) => QueryNode` — fill in any missing ids ([details](#normalizequery)) |
+| `defaultGenerateId` | `() => string` — the default id generator (`crypto.randomUUID()`)                   |
+
+```ts
+import { findNode } from "@grnrb/query-builder-core";
+
+const node = findNode(query, "c1"); // the matching node, or undefined
+```
+
+## Types
+
+Every type is exported from `@grnrb/query-builder-core` and re-exported from the framework adapters.
+The structural types — `OperatorDefinition`, `FieldDefinition`, `QuerySchema`, and `GroupNode` — are
+shown inline in the [Schema](#schema) and [Query tree](#query-tree) sections above. The aliases that
+tie them together:
+
+| Type                                                      | Meaning                                                              |
+| --------------------------------------------------------- | ------------------------------------------------------------------- |
+| `Arity`                                                   | `"none" \| "one" \| "two" \| "many"`.                               |
+| `ValueForArity<TArity, TValue>`                           | Maps an arity to its [value shape](#operators-and-arity).           |
+| `ConditionNode` / `GroupNode`                             | The two node kinds; `QueryNode` is their union.                     |
+| `GroupOperatorId<TSchema>`                                | Union of the schema's group operator ids.                           |
+| `ConditionNodeInput` / `GroupNodeInput` / `QueryNodeInput` | Input variants with `id` optional.                                |
+| `ValidateFieldDefaults<TFields>`                          | Constraint ensuring each `defaultOperator` is supported.            |
+| `Action<TSchema>`                                         | The reducer action union (see [The action set](#the-action-set)).   |
+
+## The full schema type
+
+<AutoTypeTable path="../packages/query-builder-core/src/type.ts" name="QuerySchema" />

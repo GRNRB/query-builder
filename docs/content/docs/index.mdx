@@ -51,11 +51,11 @@ The whole library rests on two pieces, and they're worth separating in your head
 
 - The **schema** is the _grammar_ — what queries are even allowed: which fields exist, which
   operators each field supports, and which operators may combine a group's children. It's
-  static and carries no state. See [Schema](/docs/core/schema).
+  static and carries no state. See [Schema](/docs/core#schema).
 - The **query tree** is the _data_ — an actual query, a tree of groups and conditions. It's
-  plain immutable JSON. See [Query tree](/docs/core/query-tree).
+  plain immutable JSON. See [Query tree](/docs/core#query-tree).
 
-Everything else — the reducer and the tree helpers — is just a typed, safe way to turn one
+Everything else — the reducer and its actions — is just a typed, safe way to turn one
 valid tree into the next.
 
 ## Quick start
@@ -68,9 +68,9 @@ npm install @grnrb/query-builder-core
 
 ```ts
 import {
+  createReducer,
   defineSchema,
-  normalizeTree,
-  reducer,
+  normalizeQuery,
 } from "@grnrb/query-builder-core";
 
 // The operators below are just what *this* app declared — pick whatever ids,
@@ -92,8 +92,8 @@ const schema = defineSchema({
   ],
 });
 
-// Build an initial tree — normalizeTree fills in any missing ids.
-let query = normalizeTree({
+// Build an initial tree — normalizeQuery fills in any missing ids.
+let query = normalizeQuery({
   type: "group",
   operator: "and",
   children: [
@@ -101,28 +101,25 @@ let query = normalizeTree({
   ],
 });
 
-// Advance it with actions — each call returns a fresh, normalized tree.
+// Bind the schema once to get a pure reducer, then advance the tree with actions —
+// each call returns a fresh tree. New nodes need ids, so normalize them first.
+const reducer = createReducer(schema);
 query = reducer(query, {
   type: "APPEND_NODE",
   groupId: query.id,
-  node: normalizeTree({
-    type: "condition",
-    field: "age",
-    operator: "gt",
-    value: 18,
-  }),
+  node: normalizeQuery({ type: "condition", field: "age", operator: "gt", value: 18 }),
 });
 ```
 
 From here the reducer accepts `APPEND_NODE`, `INSERT_NODE`, `MOVE_NODE`, `REMOVE_NODE`, and
 the rest — each one returns a fresh, normalized tree. See the [Reducer &
-actions](/docs/core/reducer) for the full set.
+actions](/docs/core#reducer-and-actions) for the full set.
 
 ## Packages
 
 | Package                                                | What it is                                                                                         |
 | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| [`@grnrb/query-builder-core`](/docs/core)              | The framework-agnostic engine: schema, immutable tree, reducer, and tree helpers. No dependencies. |
+| [`@grnrb/query-builder-core`](/docs/core)              | The framework-agnostic engine: schema, immutable tree, and a reducer. No dependencies.             |
 | [`@grnrb/react-query-builder`](/docs/frameworks/react) | The React adapter: the `useQueryBuilder` hook, re-exporting everything in core.                    |
 
 ## Where to next

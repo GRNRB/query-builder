@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import {
   defaultGenerateId,
-  normalizeTree,
+  normalizeQuery,
   useQueryBuilder,
 } from "@grnrb/react-query-builder";
 import type { QueryNode, QueryNodeInput } from "@grnrb/react-query-builder";
@@ -22,7 +22,7 @@ interface History {
 export function useUndoableQuery(initial: QueryNodeInput<S>) {
   const [history, setHistory] = useState<History>(() => ({
     past: [],
-    present: normalizeTree(initial, defaultGenerateId),
+    present: normalizeQuery(initial, defaultGenerateId),
     future: [],
   }));
 

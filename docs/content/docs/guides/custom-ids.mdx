@@ -16,12 +16,19 @@ const qb = useQueryBuilder(schema, {
 });
 ```
 
-**With the core directly** — pass it to
-[`normalizeTree`](/docs/core/query-tree#normalizetree):
+**With the core directly** — pass it to [`normalizeQuery`](/docs/core#normalizequery) wherever you
+create nodes: the root tree, and each node you normalize before an `APPEND_NODE` / `INSERT_NODE`:
 
 ```ts
 let n = 0;
-const tree = normalizeTree(input, () => `n${++n}`);
+const generateId = () => `n${++n}`;
+
+const tree = normalizeQuery(input, generateId); // seed the root
+const next = reducer(tree, {
+  type: "APPEND_NODE",
+  groupId: tree.id,
+  node: normalizeQuery({ type: "condition", field: "age", operator: "gt", value: 30 }, generateId),
+});
 ```
 
 ## When to override

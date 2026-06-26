@@ -1,15 +1,6 @@
-export {
-  defaultGenerateId,
-  normalizeTree,
-  updateNode,
-  removeNode,
-  appendToGroup,
-  findNode,
-  insertIntoGroup,
-  moveNode,
-} from "./tree";
-export { buildConditionPatch, defineSchema } from "./schema";
-export { reducer } from "./reducer";
+export { defaultGenerateId, findNode, normalizeQuery } from "./utils";
+export { defineSchema } from "./schema";
+export { createReducer } from "./reducer";
 export type {
   Arity,
   OperatorDefinition,

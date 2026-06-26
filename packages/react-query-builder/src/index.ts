@@ -2,15 +2,9 @@ export { useQueryBuilder } from "./use-query-builder";
 export {
   defineSchema,
   defaultGenerateId,
-  normalizeTree,
-  updateNode,
-  removeNode,
-  appendToGroup,
+  normalizeQuery,
   findNode,
-  insertIntoGroup,
-  moveNode,
-  buildConditionPatch,
-  reducer,
+  createReducer,
 } from "@grnrb/query-builder-core";
 export type {
   Arity,
