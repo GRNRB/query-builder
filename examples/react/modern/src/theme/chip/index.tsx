@@ -183,6 +183,11 @@ const chip: Components<Theme>["MuiChip"] = {
         border: "none",
         ...(boxShadow ? { boxShadow } : {}),
 
+        // Keep background steady on hover/focus for clickable & deletable chips
+        "&:hover, &.Mui-focusVisible": {
+          backgroundColor: background,
+        },
+
         // Icons (start/end). MUI's slots: .MuiChip-icon (start), .MuiChip-deleteIcon (end)
         "& .MuiChip-icon, & .MuiChip-deleteIcon": {
           fontSize: tokens.iconFontSize,

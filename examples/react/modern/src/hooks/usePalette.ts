@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-export type PalettePart = "field" | "operator";
+export type PalettePart = "field" | "operator" | "combinator";
 
 export interface PaletteState {
   nodeId: string;

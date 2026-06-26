@@ -6,47 +6,8 @@ import { Token } from "./Token";
 import { BracketChip } from "./BracketChip";
 import { ConditionTokens } from "./ConditionTokens";
 import { bracketColor } from "../lib/colors";
-import type { GroupNodeT } from "../schema";
-
-// ─── Drop zone (vertical insertion caret between inline tokens) ───────────────
-
-function DropZone({ groupId, index }: { groupId: string; index: number }) {
-  const { drag } = useBuilder();
-  if (!drag.draggingId) return null;
-  const active =
-    drag.dropTarget?.groupId === groupId && drag.dropTarget?.index === index;
-
-  return (
-    <Box
-      component="span"
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        drag.setDropTarget({ groupId, index });
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        drag.onDrop(groupId, index);
-      }}
-      sx={{
-        alignSelf: "stretch",
-        width: active ? 8 : 4,
-        minHeight: 24,
-        mx: 0.25,
-        borderRadius: 1,
-        cursor: "copy",
-        background: (theme) =>
-          active ? theme.palette.primary.main : "transparent",
-        border: (theme) =>
-          `1px dashed ${
-            active ? theme.palette.primary.main : theme.palette.colors.alpha.alpha20
-          }`,
-        transition: "all .1s",
-      }}
-    />
-  );
-}
+import { arityOf, fieldDef, opDef } from "../schema";
+import type { GroupNodeT, Node } from "../schema";
 
 // ─── Combinator (AND / OR between children) ──────────────────────────────────
 
@@ -57,7 +18,7 @@ function Combinator({
   node: GroupNodeT;
   focusable: boolean;
 }) {
-  const { toggleCombinator } = useBuilder();
+  const { openPalette } = useBuilder();
   const label = node.operator.toUpperCase();
 
   if (focusable) {
@@ -67,12 +28,14 @@ function Combinator({
         label={label}
         variant="solid"
         color="primary"
-        title="Toggle AND / OR (t)"
-        onActivate={() => toggleCombinator(node.id)}
+        title="Change operator — type to search"
+        onActivate={(el) => openPalette(node.id, "combinator", el, "")}
       />
     );
   }
 
+  // Repeated combinators are decorative duplicates of the same group operator;
+  // clicking any of them opens the picker for the whole group.
   return (
     <Chip
       label={label}
@@ -80,7 +43,7 @@ function Combinator({
       variant="solid"
       color="primary"
       clickable
-      onClick={() => toggleCombinator(node.id)}
+      onClick={(e) => openPalette(node.id, "combinator", e.currentTarget, "")}
       sx={{ cursor: "pointer", opacity: 0.85 }}
     />
   );
@@ -102,6 +65,30 @@ function EmptyGroupSlot({ node }: { node: GroupNodeT }) {
   );
 }
 
+// ─── Layout heuristic — inline when small, indented column when large ─────────
+
+/** Estimated inline width (≈ characters) above which a group breaks to lines. */
+const INLINE_MAX = 42;
+
+/** Approximate width of a node rendered inline; drives the inline-vs-break choice. */
+function flatWidth(node: Node): number {
+  if (node.type === "condition") {
+    const field = fieldDef(node.field)?.label ?? node.field;
+    const op = opDef(node.operator)?.label ?? node.operator;
+    const value =
+      arityOf(node.operator) === "none"
+        ? ""
+        : String((node as { value?: unknown }).value ?? "") || "value…";
+    return field.length + op.length + value.length + 2;
+  }
+  const inner = node.children.reduce((sum, c) => sum + flatWidth(c), 0);
+  const combinators =
+    node.children.length > 1
+      ? (node.children.length - 1) * (node.operator.length + 2)
+      : 0;
+  return inner + combinators + 4; // "[ " … " ]"
+}
+
 // ─── Recursive group renderer ────────────────────────────────────────────────
 
 export function ExpressionGroup({
@@ -113,29 +100,12 @@ export function ExpressionGroup({
   isRoot: boolean;
   depth: number;
 }) {
-  return (
-    <Box
-      component="span"
-      sx={{
-        display: "inline-flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        gap: 0.75,
-        ...(isRoot
-          ? {}
-          : {
-              px: 0.75,
-              py: 0.5,
-              borderRadius: 2,
-              background: `${bracketColor(depth)}0d`, // ~5% tint
-            }),
-      }}
-    >
-      {/* The root brackets are drawn too, but cannot be dragged or removed. */}
-      <BracketChip node={node} side="open" depth={depth} draggable={!isRoot} />
+  // Small groups stay inline; large ones break onto indented lines. A broken
+  // child always makes its parent break too (its width is part of the parent's).
+  const broken = flatWidth(node) > INLINE_MAX;
 
-      <DropZone groupId={node.id} index={0} />
-
+  const body = (
+    <>
       {node.children.length === 0 && <EmptyGroupSlot node={node} />}
 
       {node.children.map((child, i) => (
@@ -146,11 +116,59 @@ export function ExpressionGroup({
           ) : (
             <ConditionTokens node={child} />
           )}
-          <DropZone groupId={node.id} index={i + 1} />
         </Fragment>
       ))}
+    </>
+  );
 
-      <BracketChip node={node} side="close" depth={depth} draggable={!isRoot} />
+  return (
+    <Box
+      sx={{
+        ...(broken
+          ? {
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 0.5,
+            }
+          : {
+              display: "inline-flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 0.75,
+            }),
+        ...(isRoot
+          ? {}
+          : {
+              px: 0.75,
+              py: 0.5,
+              borderRadius: 2,
+              background: `${bracketColor(depth)}0d`, // ~5% tint
+            }),
+      }}
+    >
+      {/* The root brackets are drawn too, but cannot be removed. */}
+      <BracketChip node={node} side="open" depth={depth} />
+
+      {broken ? (
+        // Indented body — each child and combinator sits on its own line.
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            alignSelf: "stretch",
+            gap: 0.5,
+            pl: 2.5,
+          }}
+        >
+          {body}
+        </Box>
+      ) : (
+        body
+      )}
+
+      <BracketChip node={node} side="close" depth={depth} />
     </Box>
   );
 }

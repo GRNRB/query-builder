@@ -5,27 +5,40 @@ import { ValueEditor } from "./ValueEditor";
 import { arityOf, fieldDef, opDef } from "../schema";
 import type { ConditionNodeT } from "../schema";
 
-/** Renders one condition as field / operator / value chips plus a remove button. */
+/** Candidate chip colors for field tokens. */
+const FIELD_COLORS = [
+  "primary",
+  "secondary",
+  "success",
+  "warning",
+  "error",
+  "info",
+  "caution",
+  "discovery",
+] as const;
+
+/** Stable pseudo-random chip color for a field token, derived from its key so
+ * it stays put across re-renders instead of flickering on every paint. */
+function fieldColor(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++)
+    hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  return FIELD_COLORS[Math.abs(hash) % FIELD_COLORS.length];
+}
+
+/** Renders one condition as field / operator / value chips. */
 export function ConditionTokens({ node }: { node: ConditionNodeT }) {
-  const { openPalette, beginValueEdit, editingValueId, removeNode, drag } =
-    useBuilder();
+  const { openPalette, beginValueEdit, editingValueId } = useBuilder();
 
   const field = fieldDef(node.field);
   const op = opDef(node.operator);
   const showValue = arityOf(node.operator) !== "none";
   const valueStr = String((node as { value?: unknown }).value ?? "");
-  const isDragging = drag.draggingId === node.id;
   const isEditing = editingValueId === node.id;
 
   return (
     <Box
       component="span"
-      draggable={!isEditing}
-      onDragStart={(e) => {
-        e.stopPropagation();
-        drag.onDragStart(node.id);
-      }}
-      onDragEnd={drag.onDragEnd}
       sx={{
         display: "inline-flex",
         alignItems: "center",
@@ -33,17 +46,14 @@ export function ConditionTokens({ node }: { node: ConditionNodeT }) {
         px: 0.5,
         py: 0.25,
         borderRadius: 1.5,
-        cursor: "grab",
         userSelect: "none",
-        opacity: isDragging ? 0.4 : 1,
-        transition: "opacity .12s",
       }}
     >
       <Token
         focus={{ nodeId: node.id, part: "field" }}
         label={field?.label ?? node.field}
         variant="soft"
-        color="discovery"
+        color={fieldColor(node.id)}
         title="Change field — type to search"
         onActivate={(el) => openPalette(node.id, "field", el, "")}
       />
@@ -56,8 +66,8 @@ export function ConditionTokens({ node }: { node: ConditionNodeT }) {
         onActivate={(el) => openPalette(node.id, "operator", el, "")}
       />
 
-      {showValue ? (
-        isEditing ? (
+      {showValue &&
+        (isEditing ? (
           <ValueEditor node={node} />
         ) : (
           <Token
@@ -68,36 +78,7 @@ export function ConditionTokens({ node }: { node: ConditionNodeT }) {
             title="Edit value — type to replace"
             onActivate={() => beginValueEdit(node.id, "")}
           />
-        )
-      ) : (
-        <Box
-          component="span"
-          sx={{ fontSize: 12, fontStyle: "italic", color: "text.secondary" }}
-        >
-          —
-        </Box>
-      )}
-
-      <Box
-        component="button"
-        aria-label="Remove condition"
-        title="Remove (Backspace)"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={() => removeNode(node.id)}
-        sx={{
-          border: "none",
-          background: "transparent",
-          color: "text.secondary",
-          cursor: "pointer",
-          fontSize: 13,
-          lineHeight: 1,
-          px: 0.25,
-          borderRadius: 1,
-          "&:hover": { color: "error.main" },
-        }}
-      >
-        ✕
-      </Box>
+        ))}
     </Box>
   );
 }

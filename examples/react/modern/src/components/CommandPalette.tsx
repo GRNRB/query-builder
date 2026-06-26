@@ -39,6 +39,8 @@ export function CommandPalette({
   const options = useMemo<Option[]>(() => {
     if (palette.part === "field")
       return schema.fields.map((f) => ({ id: f.id, label: f.label }));
+    if (palette.part === "combinator")
+      return schema.groupOperators.map((o) => ({ id: o.id, label: o.label }));
     return supportedOps(fieldOf(palette.nodeId)).map((o) => ({
       id: o.id,
       label: o.label,
@@ -80,6 +82,7 @@ export function CommandPalette({
             size="small"
             value={search}
             placeholder={palette.part === "field" ? "Field…" : "Operator…"}
+            // (field → "Field…"; operator & group combinator → "Operator…")
             onChange={(e) => {
               setSearch(e.target.value);
               setHighlight(0);

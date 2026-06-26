@@ -9,8 +9,8 @@ import {
 } from "../lib/focus";
 import { findNode } from "../lib/tree";
 import type { Focus } from "../lib/focus";
-import { STARTER, nextGroupOp } from "../schema";
-import type { GroupNodeT, Node, S } from "../schema";
+import { STARTER } from "../schema";
+import type { GroupNodeT, S } from "../schema";
 import type { FocusManager } from "./useFocusManager";
 import type { PalettePart } from "./usePalette";
 
@@ -26,24 +26,12 @@ interface KeyboardDeps {
   beginValueEdit: (nodeId: string, seed: string) => void;
   /** True while the palette or value editor owns focus — keyboard is paused. */
   blockedRef: MutableRefObject<boolean>;
+  undo: () => void;
+  redo: () => void;
 }
 
 const clamp = (n: number, min: number, max: number) =>
   Math.min(max, Math.max(min, n));
-
-/** The group new siblings/children should be added to for the current cursor. */
-function groupContextId(root: Node, f: Focus): string {
-  const node = findNode(root, f.nodeId);
-  if (node?.type === "group") {
-    if (f.part === "bracket-close") {
-      const loc = findParentAndIndex(root, node.id);
-      return loc ? loc.parentId : node.id;
-    }
-    return node.id;
-  }
-  const loc = findParentAndIndex(root, f.nodeId);
-  return loc ? loc.parentId : root.id;
-}
 
 export function useQueryKeyboard({
   qb,
@@ -51,11 +39,33 @@ export function useQueryKeyboard({
   openPalette,
   beginValueEdit,
   blockedRef,
+  undo,
+  redo,
 }: KeyboardDeps) {
   const { focusRef, focusToken, queueFocus, moveVertical } = fm;
 
   return function onKeyDown(e: ReactKeyboardEvent) {
     if (blockedRef.current) return;
+
+    // ── Undo / redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+Y) ───────────────
+    if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+      // The restored tree carries different node ids; keep the cursor valid.
+      queueFocus((r) => {
+        const cur = focusRef.current;
+        return cur && findNode(r, cur.nodeId) ? cur : firstFocusableOf(r);
+      });
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y")) {
+      e.preventDefault();
+      redo();
+      queueFocus((r) => firstFocusableOf(r));
+      return;
+    }
+
     const f = focusRef.current;
     if (!f) return;
 
@@ -121,20 +131,10 @@ export function useQueryKeyboard({
         if (flat.length) focusToken(flat[flat.length - 1]);
         return;
 
-      case "[": {
+      case "g":
+      case "G": {
+        // `g` is the dedicated "new group" command (reserved from type-to-search).
         e.preventDefault();
-        if (e.shiftKey) {
-          // Append a group at the end of the cursor's group.
-          const gid = groupContextId(root, f);
-          qb.addGroup(gid, "and", [{ ...STARTER }]);
-          queueFocus((r) => {
-            const g = findNode(r, gid);
-            return g && g.type === "group" && g.children.length
-              ? firstFocusableOf(g.children[g.children.length - 1])
-              : null;
-          });
-          return;
-        }
         if (
           node.type === "group" &&
           (f.part === "bracket-open" || f.part === "combinator")
@@ -164,9 +164,11 @@ export function useQueryKeyboard({
 
       case "]": {
         e.preventDefault();
+        // Enclosing groups, innermost last — the root counts so `]` can reach
+        // the outermost close bracket from a direct child of the root.
         const path = pathTo(root, f.nodeId) ?? [];
         const groups = path.filter(
-          (n): n is GroupNodeT => n.type === "group" && n.id !== root.id,
+          (n): n is GroupNodeT => n.type === "group",
         );
         const target =
           f.part === "bracket-close"
@@ -191,8 +193,8 @@ export function useQueryKeyboard({
                   : null;
               });
             } else {
-              // Populated group: Enter toggles the AND/OR operator.
-              qb.updateGroupOperator(node.id, nextGroupOp(node.operator));
+              // Populated group: open the picker to choose the group operator.
+              openPalette(node.id, "combinator", e.target as HTMLElement, "");
             }
           }
           // Brackets: Enter does nothing (use `c` to add a condition).
@@ -262,22 +264,9 @@ export function useQueryKeyboard({
           node.type === "group" &&
           node.children.length > 0
         ) {
+          // Group operator: Space opens the picker (same as Enter).
           e.preventDefault();
-          qb.updateGroupOperator(node.id, nextGroupOp(node.operator));
-        }
-        return;
-      }
-
-      case "t":
-      case "T": {
-        // Reserved command: toggle the combinator (no-op elsewhere, never types).
-        e.preventDefault();
-        if (
-          f.part === "combinator" &&
-          node.type === "group" &&
-          node.children.length > 0
-        ) {
-          qb.updateGroupOperator(node.id, nextGroupOp(node.operator));
+          openPalette(f.nodeId, "combinator", e.target as HTMLElement, "");
         }
         return;
       }
@@ -288,6 +277,13 @@ export function useQueryKeyboard({
       if (f.part === "field" || f.part === "operator") {
         e.preventDefault();
         openPalette(f.nodeId, f.part, e.target as HTMLElement, e.key);
+      } else if (
+        f.part === "combinator" &&
+        node.type === "group" &&
+        node.children.length > 0
+      ) {
+        e.preventDefault();
+        openPalette(f.nodeId, "combinator", e.target as HTMLElement, e.key);
       } else if (f.part === "value") {
         e.preventDefault();
         beginValueEdit(f.nodeId, e.key);

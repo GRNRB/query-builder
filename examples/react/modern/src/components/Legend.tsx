@@ -1,46 +1,41 @@
+import { Fragment } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import { Kbd, KbdGroup } from "./Kbd";
 
-const SHORTCUTS: { keys: string; label: string }[] = [
-  { keys: "[", label: "new group" },
-  { keys: "⇧[", label: "group at end" },
-  { keys: "c", label: "new condition" },
-  { keys: "Enter", label: "edit / open field" },
-  { keys: "type", label: "search field / op" },
-  { keys: "Space", label: "edit value" },
-  { keys: "t", label: "toggle AND / OR" },
-  { keys: "]", label: "jump out of group" },
-  { keys: "← →", label: "move cursor" },
-  { keys: "↑ ↓", label: "move by line" },
-  { keys: "⌥← →", label: "reorder" },
-  { keys: "⌫", label: "delete" },
+/** True on macOS / iOS, where modifiers are drawn as glyphs (⌘ ⌥ ⇧ ⌫). */
+const isMac = (() => {
+  if (typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & {
+    userAgentData?: { platform?: string };
+  };
+  const platform =
+    nav.userAgentData?.platform || nav.platform || nav.userAgent || "";
+  return /mac|iphone|ipad|ipod/i.test(platform);
+})();
+
+// Platform-specific modifier captions: glyphs on macOS, words on Windows/Linux.
+const MOD = isMac ? "⌘" : "Ctrl";
+const ALT = isMac ? "⌥" : "Alt";
+const SHIFT = isMac ? "⇧" : "Shift";
+const DEL = isMac ? "⌫" : "Back";
+
+/** Each shortcut is a list of keycaps shown as a single chord. */
+const SHORTCUTS: { keys: string[]; label: string }[] = [
+  { keys: ["G"], label: "new group" },
+  { keys: ["C"], label: "new condition" },
+  { keys: ["Enter"], label: "edit / open field" },
+  { keys: ["A–Z"], label: "search field / op" },
+  { keys: ["Space"], label: "edit value" },
+  { keys: ["]"], label: "jump out of group" },
+  { keys: ["←", "↑", "↓", "→"], label: "move cursor" },
+  { keys: [ALT, "←", "→"], label: "reorder" },
+  { keys: [DEL], label: "delete" },
+  { keys: [MOD, "Z"], label: "undo" },
+  { keys: [MOD, SHIFT, "Z"], label: "redo" },
 ];
 
-function Key({ children }: { children: React.ReactNode }) {
-  return (
-    <Box
-      component="kbd"
-      sx={{
-        justifySelf: "start",
-        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-        fontSize: 11,
-        fontWeight: 600,
-        px: 0.75,
-        py: 0.25,
-        borderRadius: 1,
-        background: (theme) => theme.palette.colors.alpha.alpha08,
-        boxShadow: (theme) =>
-          `0 0 0 1px ${theme.palette.colors.alpha.alpha12} inset`,
-        color: "text.primary",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
-
-/** Keyboard cheat-sheet laid out as an aligned key / description grid. */
+/** Keyboard cheat-sheet laid out as an aligned chord / description grid. */
 export function Legend() {
   return (
     <Box
@@ -60,12 +55,16 @@ export function Legend() {
       }}
     >
       {SHORTCUTS.map((s) => (
-        <Box key={s.keys} sx={{ display: "contents" }}>
-          <Key>{s.keys}</Key>
+        <Fragment key={s.label}>
+          <KbdGroup sx={{ justifySelf: "start" }}>
+            {s.keys.map((k, i) => (
+              <Kbd key={i}>{k}</Kbd>
+            ))}
+          </KbdGroup>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {s.label}
           </Typography>
-        </Box>
+        </Fragment>
       ))}
     </Box>
   );

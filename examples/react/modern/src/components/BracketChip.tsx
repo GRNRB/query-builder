@@ -1,42 +1,25 @@
 import Box from "@mui/material/Box";
-import type { DragEvent } from "react";
-import { useBuilder, useToken } from "../context";
+import { useToken } from "../context";
 import { bracketColor } from "../lib/colors";
 import type { GroupNodeT } from "../schema";
 
 /**
- * A focusable `[` / `]`. The opening bracket doubles as the drag handle for the
- * whole group; both brackets participate in keyboard navigation and `]` jump-out.
+ * A focusable `[` / `]`. Both brackets participate in keyboard navigation and
+ * the `]` jump-out shortcut.
  */
 export function BracketChip({
   node,
   side,
   depth,
-  draggable = true,
 }: {
   node: GroupNodeT;
   side: "open" | "close";
   depth: number;
-  /** Root brackets pass false — they are not a drag handle. */
-  draggable?: boolean;
 }) {
-  const { drag } = useBuilder();
   const t = useToken({
     nodeId: node.id,
     part: side === "open" ? "bracket-open" : "bracket-close",
   });
-
-  const isHandle = side === "open" && draggable;
-  const dragProps = isHandle
-    ? {
-        draggable: true,
-        onDragStart: (e: DragEvent) => {
-          e.stopPropagation();
-          drag.onDragStart(node.id);
-        },
-        onDragEnd: drag.onDragEnd,
-      }
-    : {};
 
   return (
     <Box
@@ -45,24 +28,38 @@ export function BracketChip({
       data-qb-token=""
       tabIndex={t.tabIndex}
       onClick={() => t.focusSelf()}
-      {...dragProps}
       sx={{
         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
         fontWeight: 800,
         fontSize: 20,
         lineHeight: 1,
         color: bracketColor(depth),
-        cursor: isHandle ? "grab" : "default",
+        cursor: "default",
         px: 0.5,
         py: 0.25,
         borderRadius: 1,
         outline: "none",
         userSelect: "none",
         transition: "background .1s",
+        // Blinking text-caret (I-beam) shown only while focused.
+        "@keyframes qb-caret-blink": {
+          "0%, 49%": { opacity: 1 },
+          "50%, 100%": { opacity: 0 },
+        },
         ...(t.isFocused && {
-          background: (theme) => theme.palette.colors.alpha.alpha08,
-          boxShadow: (theme) =>
-            `0 0 0 2px ${theme.palette.background.default}, 0 0 0 4px ${theme.palette.primary.main}`,
+          position: "relative",
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            right: 3,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "1.5px",
+            height: "1.05em",
+            backgroundColor: "currentColor",
+            animation: "qb-caret-blink 1.06s step-end infinite",
+            pointerEvents: "none",
+          },
         }),
       }}
     >

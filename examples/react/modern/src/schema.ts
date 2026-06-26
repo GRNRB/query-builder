@@ -27,6 +27,7 @@ export const schema = defineSchema({
   groupOperators: [
     { id: "and", arity: "many", label: "AND" },
     { id: "or", arity: "many", label: "OR" },
+    { id: "xor", arity: "many", label: "XOR" },
   ],
 });
 
@@ -96,5 +97,3 @@ export const supportedOps = (fieldId: string) => {
     f?.supportedOperators.some((id) => id === o.id),
   );
 };
-
-export const nextGroupOp = (op: string): GroupOp => (op === "and" ? "or" : "and");

@@ -53,12 +53,27 @@ export function Token({
         outline: "none",
         fontStyle: italic ? "italic" : "normal",
         transition: "box-shadow .1s, background-color .1s",
+        // Blinking text-caret (I-beam) shown only while focused.
+        "@keyframes qb-caret-blink": {
+          "0%, 49%": { opacity: 1 },
+          "50%, 100%": { opacity: 0 },
+        },
         ...(t.isFocused && {
-          // Uniform focus treatment across every token: a tinted background plus
-          // a primary-colored ring.
-          backgroundColor: (theme) => theme.palette.colors.alpha.alpha12,
-          boxShadow: (theme) =>
-            `0 0 0 2px ${theme.palette.background.default}, 0 0 0 4px ${theme.palette.primary.main}`,
+          position: "relative",
+          // Caret is shown only while the builder shell itself holds focus, so
+          // it vanishes when focus leaves the Paper (click-away, palette, etc.).
+          "[data-qb-shell]:focus-within &::after": {
+            content: '""',
+            position: "absolute",
+            right: 3,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "1.5px",
+            height: "1.05em",
+            backgroundColor: "currentColor",
+            animation: "qb-caret-blink 1.06s step-end infinite",
+            pointerEvents: "none",
+          },
         }),
       }}
     />

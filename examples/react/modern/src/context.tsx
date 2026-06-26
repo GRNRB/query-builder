@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext } from "react";
 import { sameFocus, tokenKey } from "./lib/focus";
 import type { Focus } from "./lib/focus";
-import type { DragProps } from "./hooks/useDragState";
 import type { PalettePart } from "./hooks/usePalette";
 import type { Node } from "./schema";
 
@@ -25,11 +24,8 @@ export interface BuilderContextValue {
   commitValue: (nodeId: string, value: string) => void;
   cancelValueEdit: () => void;
 
-  toggleCombinator: (groupId: string) => void;
   removeNode: (nodeId: string) => void;
   addCondition: (groupId: string) => void;
-
-  drag: DragProps;
 }
 
 const BuilderContext = createContext<BuilderContextValue | null>(null);
