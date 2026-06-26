@@ -6,7 +6,7 @@
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "changeset": "changeset",
-    "version": "changeset version",
+    "version-packages": "changeset version",
     "release": "pnpm --filter './packages/*' run build && changeset publish"
   },
   "devDependencies": {
